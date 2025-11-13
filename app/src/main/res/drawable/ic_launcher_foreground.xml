@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- 渐变背景 -->
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="0"
+                android:startY="0"
+                android:endX="108"
+                android:endY="108"
+                android:startColor="#667EEA"
+                android:endColor="#764BA2" />
+        </aapt:attr>
+    </path>
+
+    <!-- 外层莲花花瓣 (5片) -->
+    <!-- 顶部花瓣 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.9"
+        android:pathData="M54,20 C48,20 45,28 45,34 C45,28 48,20 54,20 C60,20 63,28 63,34 C63,28 60,20 54,20 Z" />
+
+    <!-- 右上花瓣 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.85"
+        android:pathData="M70,30 C68,25 61,26 57,30 C61,26 68,25 70,30 C72,35 70,42 66,45 C70,42 72,35 70,30 Z" />
+
+    <!-- 右下花瓣 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.8"
+        android:pathData="M70,60 C72,55 70,48 66,45 C70,48 72,55 70,60 C68,65 61,66 57,62 C61,66 68,65 70,60 Z" />
+
+    <!-- 左下花瓣 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.8"
+        android:pathData="M38,60 C36,65 43,66 47,62 C43,66 36,65 38,60 C40,55 38,48 42,45 C38,48 40,55 38,60 Z" />
+
+    <!-- 左上花瓣 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.85"
+        android:pathData="M38,30 C40,25 38,18 42,15 C38,18 40,25 38,30 C36,35 43,36 47,32 C43,36 36,35 38,30 Z" />
+
+    <!-- 中心冥想人物 -->
+    <!-- 头部 - 使用path画圆 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,36 A6,6 0 1,1 54,48 A6,6 0 1,1 54,36" />
+
+    <!-- 身体 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,48 L54,62"
+        android:strokeWidth="4"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round" />
+
+    <!-- 盘腿坐姿 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,62 L48,68 L42,68 M54,62 L60,68 L66,68"
+        android:strokeWidth="3.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 手臂 (冥想手势) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,52 L44,56 L42,60 M54,52 L64,56 L66,60"
+        android:strokeWidth="3"
+        android:strokeColor="#FFFFFF"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- 光环效果 - 内圈 -->
+    <path
+        android:pathData="M54,22 A32,32 0 1,1 54,86 A32,32 0 1,1 54,22"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.3"
+        android:strokeWidth="1.5"
+        android:fillColor="@android:color/transparent" />
+
+    <!-- 光环效果 - 外圈 -->
+    <path
+        android:pathData="M54,16 A38,38 0 1,1 54,92 A38,38 0 1,1 54,16"
+        android:strokeColor="#FFFFFF"
+        android:strokeAlpha="0.15"
+        android:strokeWidth="1"
+        android:fillColor="@android:color/transparent" />
+</vector>

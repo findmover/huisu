@@ -1,0 +1,124 @@
+<resources>
+    <string name="app_name">回溯</string>
+
+    <!-- Tab Navigation -->
+    <string name="tab_meditation">冥想</string>
+    <string name="tab_affirmation">积极暗示</string>
+    <string name="tab_statistics">统计</string>
+
+    <!-- Meditation -->
+    <string name="meditation_today">今日冥想</string>
+    <string name="meditation_start">开始冥想</string>
+    <string name="meditation_stop">结束冥想</string>
+    <string name="meditation_pause">暂停</string>
+    <string name="meditation_resume">继续</string>
+    <string name="meditation_paused">冥想已暂停</string>
+    <string name="meditation_in_progress">冥想进行中</string>
+    <string name="meditation_completed">已完成 %d 次</string>
+    <string name="meditation_continuous_days">连续 %d 天</string>
+    <string name="meditation_this_week">本周累计</string>
+    <string name="meditation_this_month">本月累计</string>
+    <string name="meditation_total_times">总次数</string>
+    <string name="meditation_total_duration">总时长</string>
+    <string name="meditation_current_video">当前视频</string>
+    <string name="meditation_manage_links">点击管理冥想视频链接</string>
+    <string name="meditation_video_playing">视频正在B站播放中...</string>
+    <string name="meditation_stay_focused">保持专注,享受当下</string>
+    <string name="meditation_continue">继续</string>
+    <string name="meditation_watching">观看</string>
+    <string name="meditation_finish">完成</string>
+    <string name="meditation_cancel">取消</string>
+    <string name="meditation_paused_hint">已暂停</string>
+    <string name="meditation_video_playing_hint">播放中</string>
+    <string name="meditation_paused_tip">冥想已暂停</string>
+    <string name="meditation_click_continue_tip">点击"继续冥想"按钮后再返回B站观看</string>
+    <string name="meditation_cancel_title">取消本次冥想?</string>
+    <string name="meditation_cancel_message">本次冥想记录将不会保存,确定要取消吗?</string>
+
+    <!-- Affirmation -->
+    <string name="affirmation_today_progress">今日完成</string>
+    <string name="affirmation_start">开始默念</string>
+    <string name="affirmation_complete">完成</string>
+    <string name="affirmation_next_reminder">下次提醒</string>
+    <string name="affirmation_morning">早晨</string>
+    <string name="affirmation_noon">中午</string>
+    <string name="affirmation_evening">晚上</string>
+    <string name="affirmation_completion_rate">完成率</string>
+    <string name="affirmation_this_week">本周完成率</string>
+    <string name="affirmation_this_month">本月完成率</string>
+    <string name="affirmation_continuous_days">连续完成</string>
+    <string name="affirmation_manage">管理暗示语</string>
+    <string name="affirmation_repeat_gently">在心中轻轻重复这段话...</string>
+    <string name="affirmation_add_new">添加新暗示语</string>
+    <string name="affirmation_content_hint">输入你的积极暗示语,比如:我每天都在进步,我值得拥有美好的生活...</string>
+
+    <!-- Statistics -->
+    <string name="stats_meditation_trend">本周冥想趋势</string>
+    <string name="stats_affirmation_rate">本月积极暗示完成率</string>
+    <string name="stats_calendar">本月完成日历</string>
+    <string name="stats_achievements">成就徽章</string>
+    <string name="stats_all_completed">全部完成</string>
+    <string name="stats_partial_completed">部分完成</string>
+    <string name="stats_not_started">未开始</string>
+
+    <!-- Settings -->
+    <string name="settings_video_links">视频链接管理</string>
+    <string name="settings_reminder_time">提醒时间设置</string>
+    <string name="settings_affirmation_duration">默念时长</string>
+    <string name="settings_morning_time">早晨提醒</string>
+    <string name="settings_noon_time">中午提醒</string>
+    <string name="settings_evening_time">晚上提醒</string>
+    <string name="settings_save">保存</string>
+    <string name="settings_cancel">取消</string>
+    <string name="settings_add_link">添加新链接</string>
+    <string name="settings_link_title">链接名称</string>
+    <string name="settings_link_url">视频链接</string>
+
+    <!-- Video Link Management -->
+    <string name="video_link_management">视频链接管理</string>
+    <string name="add_new_link">添加新链接</string>
+    <string name="add_video_link">添加视频链接</string>
+    <string name="edit_video_link">编辑视频链接</string>
+    <string name="link_title">链接名称</string>
+    <string name="enter_link_title">请输入链接名称</string>
+    <string name="video_link">视频链接</string>
+    <string name="enter_video_link">请输入B站视频链接</string>
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
+
+    <!-- Affirmation Management -->
+    <string name="affirmation_management">暗示语管理</string>
+    <string name="my_affirmations">我的暗示语</string>
+    <string name="no_affirmations_yet">还没有暗示语</string>
+    <string name="add_new_affirmation">添加新暗示语</string>
+    <string name="add_affirmation">添加暗示语</string>
+    <string name="edit_affirmation">编辑暗示语</string>
+    <string name="affirmation_content">暗示语内容</string>
+    <string name="enter_affirmation">输入你的积极暗示语</string>
+    <string name="reminder_time_settings">提醒时间设置</string>
+    <string name="affirmation_morning_reminder">早晨提醒</string>
+    <string name="affirmation_noon_reminder">中午提醒</string>
+    <string name="affirmation_evening_reminder">晚上提醒</string>
+    <string name="affirmation_duration">默念时长</string>
+    <string name="select_time">选择时间</string>
+    <string name="select_duration">选择时长</string>
+    <string name="created_at">创建于 %s</string>
+    <string name="tips">小贴士</string>
+    <string name="affirmation_tips">• 使用第一人称"我"开头\n• 使用现在时态描述\n• 保持积极正面的语气\n• 建议20-100字之间</string>
+
+    <!-- Common -->
+    <string name="minutes">分钟</string>
+    <string name="times">次</string>
+    <string name="hours">小时</string>
+    <string name="days">天</string>
+    <string name="back">返回</string>
+    <string name="confirm">确认</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_meditation">冥想计时</string>
+    <string name="notification_channel_affirmation">积极暗示提醒</string>
+    <string name="notification_meditation_title">冥想进行中</string>
+    <string name="notification_meditation_text">已进行 %s</string>
+    <string name="notification_affirmation_title">该进行积极暗示了</string>
+    <string name="notification_affirmation_text">点击开始今日的%s默念</string>
+</resources>
