@@ -175,12 +175,12 @@ private fun PlatformTabs(
     selectedPlatform: HotSearchPlatform,
     onPlatformSelected: (HotSearchPlatform) -> Unit
 ) {
-    // 横向滚动布局
+    // 横向滚动布局 - 紧凑版
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)  // 从8dp减小到6dp
     ) {
         PlatformTab(HotSearchPlatform.WEIBO, selectedPlatform, onPlatformSelected)
         PlatformTab(HotSearchPlatform.ZHIHU, selectedPlatform, onPlatformSelected)
@@ -193,7 +193,7 @@ private fun PlatformTabs(
 }
 
 /**
- * 单个平台标签 - 固定宽度
+ * 单个平台标签 - 紧凑版（缩小尺寸以容纳更多图标）
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -206,34 +206,35 @@ private fun PlatformTab(
 
     Card(
         onClick = { onPlatformSelected(platform) },
-        modifier = Modifier.width(75.dp),  // 固定宽度
+        modifier = Modifier.width(58.dp),  // 从75dp缩小到58dp
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) Color.White else Color.White.copy(alpha = 0.2f)
         ),
         border = BorderStroke(
-            width = 1.5.dp,
+            width = 1.dp,  // 从1.5dp减小到1dp
             color = if (isSelected) Color.White else Color.White.copy(alpha = 0.3f)
         ),
-        shape = RoundedCornerShape(10.dp)
+        shape = RoundedCornerShape(8.dp)  // 从10dp减小到8dp
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp, horizontal = 6.dp),
+                .padding(vertical = 6.dp, horizontal = 4.dp),  // 从8dp/6dp减小到6dp/4dp
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             Text(
                 text = platform.icon,
-                fontSize = 16.sp,
+                fontSize = 14.sp,  // 从16sp减小到14sp
                 color = if (isSelected) Color(0xFFFF6B6B) else Color.White
             )
-            Spacer(modifier = Modifier.height(3.dp))
+            Spacer(modifier = Modifier.height(2.dp))  // 从3dp减小到2dp
             Text(
                 text = platform.displayName,
-                fontSize = 11.sp,
+                fontSize = 10.sp,  // 从11sp减小到10sp
                 fontWeight = FontWeight.Medium,
-                color = if (isSelected) Color(0xFFFF6B6B) else Color.White
+                color = if (isSelected) Color(0xFFFF6B6B) else Color.White,
+                maxLines = 1
             )
         }
     }

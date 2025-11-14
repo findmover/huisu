@@ -2,8 +2,10 @@ package com.app.huisu.ui.todo
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,6 +26,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -43,6 +46,7 @@ fun TodoScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showAddTodoDialog by remember { mutableStateOf(false) }
     var showAddCategoryDialog by remember { mutableStateOf(false) }
+    var todoToEdit by remember { mutableStateOf<TodoItem?>(null) }
 
     // 进入动画
     var visible by remember { mutableStateOf(false) }
@@ -123,7 +127,7 @@ fun TodoScreen(
                             TodoItemCard(
                                 todo = todo,
                                 onToggle = viewModel::toggleTodoCompletion,
-                                onEdit = { onNavigateToDetail(todo.id) },
+                                onEdit = { todoToEdit = todo },
                                 onDelete = viewModel::deleteTodo
                             )
                         }
@@ -153,6 +157,27 @@ fun TodoScreen(
             onConfirm = { name, color, icon ->
                 viewModel.addCategory(name, color, icon)
                 showAddCategoryDialog = false
+            }
+        )
+    }
+
+    // 编辑TODO对话框
+    todoToEdit?.let { todo ->
+        EditTodoDialog(
+            todo = todo,
+            categories = uiState.categories,
+            onDismiss = { todoToEdit = null },
+            onConfirm = { id, title, description, categoryId, priority, dueDate ->
+                viewModel.updateTodo(
+                    todo.copy(
+                        title = title,
+                        description = description,
+                        categoryId = categoryId,
+                        priority = priority,
+                        dueDate = dueDate
+                    )
+                )
+                todoToEdit = null
             }
         )
     }
@@ -374,7 +399,7 @@ private fun EmptyTodoState(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun TodoItemCard(
     todo: TodoItem,
@@ -383,6 +408,8 @@ private fun TodoItemCard(
     onDelete: (TodoItem) -> Unit
 ) {
     var isVisible by remember { mutableStateOf(false) }
+    var showMenu by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         isVisible = true
     }
@@ -400,54 +427,41 @@ private fun TodoItemCard(
             shape = RoundedCornerShape(8.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Box {
                 Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 完成状态复选框
-                    IconButton(
-                        onClick = { onToggle(todo.id, todo.isCompleted) },
-                        modifier = Modifier.size(24.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (todo.isCompleted) Icons.Default.Check else Icons.Default.Add,
-                            contentDescription = if (todo.isCompleted) "已完成" else "未完成",
-                            tint = if (todo.isCompleted) Color(0xFF10B981) else Color.Gray,
-                            modifier = Modifier.size(20.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .combinedClickable(
+                            onClick = { onToggle(todo.id, todo.isCompleted) },
+                            onLongClick = { showMenu = true }
                         )
-                    }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // 完成状态图标
+                    Icon(
+                        imageVector = if (todo.isCompleted) Icons.Default.Check else Icons.Default.Add,
+                        contentDescription = if (todo.isCompleted) "已完成" else "未完成",
+                        tint = if (todo.isCompleted) Color(0xFF10B981) else Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
 
-                    Spacer(modifier = Modifier.width(8.dp))
-
+                    // 内容区域
                     Column(modifier = Modifier.weight(1f)) {
+                        // 只显示description作为主要内容
                         Text(
-                            text = todo.title,
+                            text = todo.description.ifEmpty { todo.title },
                             fontSize = 14.sp,
                             fontWeight = if (todo.isCompleted) FontWeight.Normal else FontWeight.SemiBold,
                             color = if (todo.isCompleted) Color.Gray else Color(0xFF333333),
                             textDecoration = if (todo.isCompleted) TextDecoration.LineThrough else null,
-                            maxLines = 1
+                            maxLines = 2
                         )
-
-                        if (todo.description.isNotEmpty()) {
-                            Text(
-                                text = todo.description,
-                                fontSize = 12.sp,
-                                color = Color.Gray,
-                                maxLines = 1
-                            )
-                        }
 
                         // 优先级和截止时间
                         Row(
-                            modifier = Modifier.padding(top = 2.dp),
+                            modifier = Modifier.padding(top = 4.dp),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             PriorityBadge(priority = todo.priority)
@@ -458,24 +472,40 @@ private fun TodoItemCard(
                     }
                 }
 
-                // 操作按钮
-                Row {
-                    IconButton(onClick = onEdit) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "编辑",
-                            tint = Color(0xFF667EEA),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                    IconButton(onClick = { onDelete(todo) }) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "删除",
-                            tint = Color(0xFFEF4444),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                // 长按菜单
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    offset = DpOffset(x = 0.dp, y = 0.dp)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("编辑") },
+                        onClick = {
+                            showMenu = false
+                            onEdit()
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = "编辑",
+                                tint = Color(0xFF667EEA)
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("删除", color = Color(0xFFEF4444)) },
+                        onClick = {
+                            showMenu = false
+                            onDelete(todo)
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "删除",
+                                tint = Color(0xFFEF4444)
+                            )
+                        }
+                    )
                 }
             }
         }

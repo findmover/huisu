@@ -68,32 +68,9 @@ fun AddTodoDialog(
                     modifier = Modifier.padding(bottom = 20.dp)
                 )
 
-                // 标题输入
+                // 内容输入（移除标题，直接使用描述作为主要内容）
                 Text(
-                    text = "标题 *",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF333333),
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = { title = it },
-                    placeholder = { Text("输入TODO标题...") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF667EEA),
-                        unfocusedBorderColor = Color(0xFFE0E0E0)
-                    ),
-                    singleLine = true
-                )
-
-                // 描述输入
-                Text(
-                    text = "描述（可选）",
+                    text = "内容 *",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = Color(0xFF333333),
@@ -102,17 +79,17 @@ fun AddTodoDialog(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    placeholder = { Text("输入详细描述...") },
+                    placeholder = { Text("输入TODO内容...") },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
+                        .height(120.dp)
                         .padding(bottom = 16.dp),
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color(0xFF667EEA),
                         unfocusedBorderColor = Color(0xFFE0E0E0)
                     ),
-                    maxLines = 3
+                    maxLines = 5
                 )
 
                 // 分类选择
@@ -219,7 +196,9 @@ fun AddTodoDialog(
                         onClick = {
                             selectedCategory?.let { category ->
                                 val dueDate = selectedDate?.time
-                                onConfirm(title, description, category.id, selectedPriority, dueDate)
+                                // 使用描述内容的前50个字符作为标题（用于显示），完整内容存在description
+                                val displayTitle = if (description.length > 50) description.take(50) + "..." else description
+                                onConfirm(displayTitle, description, category.id, selectedPriority, dueDate)
                             }
                         },
                         modifier = Modifier
@@ -227,7 +206,7 @@ fun AddTodoDialog(
                             .height(48.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF667EEA)),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = title.isNotBlank() && selectedCategory != null
+                        enabled = description.isNotBlank() && selectedCategory != null
                     ) {
                         Text("添加", fontSize = 16.sp, color = Color.White)
                     }
@@ -544,4 +523,218 @@ private fun DatePickerDialog(
 private fun formatDate(date: Date): String {
     val format = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     return format.format(date)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditTodoDialog(
+    todo: com.app.huisu.data.entity.TodoItem,
+    categories: List<TodoCategory>,
+    onDismiss: () -> Unit,
+    onConfirm: (Long, String, String, Long, TodoPriority, Long?) -> Unit
+) {
+    var description by remember { mutableStateOf(todo.description) }
+    var selectedCategory by remember { mutableStateOf<TodoCategory?>(categories.find { it.id == todo.categoryId }) }
+    var selectedPriority by remember { mutableStateOf(todo.priority) }
+    var selectedDate by remember { mutableStateOf<Date?>(todo.dueDate?.let { Date(it) }) }
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDateSelected = { date ->
+                selectedDate = date
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false }
+        )
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 600.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = "编辑TODO",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF333333),
+                    modifier = Modifier.padding(bottom = 20.dp)
+                )
+
+                // 内容输入
+                Text(
+                    text = "内容 *",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF333333),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    placeholder = { Text("输入TODO内容...") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .padding(bottom = 16.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF667EEA),
+                        unfocusedBorderColor = Color(0xFFE0E0E0)
+                    ),
+                    maxLines = 5
+                )
+
+                // 分类选择
+                Text(
+                    text = "分类 *",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF333333),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                if (categories.isEmpty()) {
+                    Text(
+                        text = "暂无分类，请先创建分类",
+                        color = Color.Gray,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                } else {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    ) {
+                        items(categories) { category ->
+                            CategorySelectionChip(
+                                category = category,
+                                isSelected = selectedCategory?.id == category.id,
+                                onClick = { selectedCategory = category }
+                            )
+                        }
+                    }
+                }
+
+                // 优先级选择
+                Text(
+                    text = "优先级",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF333333),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    TodoPriority.values().forEach { priority ->
+                        PriorityChip(
+                            priority = priority,
+                            isSelected = selectedPriority == priority,
+                            onClick = { selectedPriority = priority },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 截止日期
+                Text(
+                    text = "截止日期（可选）",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF333333),
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = selectedDate?.let { formatDate(it) } ?: "",
+                        onValueChange = { },
+                        placeholder = { Text("选择截止日期") },
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(bottom = 24.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF667EEA),
+                            unfocusedBorderColor = Color(0xFFE0E0E0),
+                            disabledTextColor = Color(0xFF333333),
+                            disabledBorderColor = Color(0xFFE0E0E0),
+                            disabledPlaceholderColor = Color(0xFF999999),
+                            disabledTrailingIconColor = Color(0xFF333333)
+                        ),
+                        readOnly = true,
+                        enabled = false,
+                        trailingIcon = {
+                            IconButton(onClick = { showDatePicker = true }) {
+                                Text(
+                                    text = "📅",
+                                    fontSize = 20.sp
+                                )
+                            }
+                        }
+                    )
+                    if (selectedDate != null) {
+                        OutlinedButton(
+                            onClick = { selectedDate = null },
+                            modifier = Modifier.padding(bottom = 24.dp),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text("清除")
+                        }
+                    }
+                }
+
+                // 按钮
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = ButtonDefaults.outlinedButtonBorder.copy(width = 2.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF667EEA))
+                    ) {
+                        Text("取消", fontSize = 16.sp)
+                    }
+
+                    Button(
+                        onClick = {
+                            selectedCategory?.let { category ->
+                                val dueDate = selectedDate?.time
+                                // 使用描述内容的前50个字符作为标题（用于显示），完整内容存在description
+                                val displayTitle = if (description.length > 50) description.take(50) + "..." else description
+                                onConfirm(todo.id, displayTitle, description, category.id, selectedPriority, dueDate)
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF667EEA)),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = description.isNotBlank() && selectedCategory != null
+                    ) {
+                        Text("保存", fontSize = 16.sp, color = Color.White)
+                    }
+                }
+            }
+        }
+    }
 }

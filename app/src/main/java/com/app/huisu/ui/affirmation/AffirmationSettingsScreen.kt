@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +25,7 @@ import com.app.huisu.data.entity.Affirmation
 import com.app.huisu.ui.components.SecondaryButton
 import com.app.huisu.ui.theme.Purple667
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AffirmationSettingsScreen(
     viewModel: AffirmationSettingsViewModel = hiltViewModel(),
@@ -30,26 +33,42 @@ fun AffirmationSettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp)
-        ) {
-            // 标题
-            Text(
-                text = stringResource(R.string.affirmation_management),
-                style = MaterialTheme.typography.headlineMedium.copy(
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
-                ),
-                modifier = Modifier.padding(bottom = 20.dp)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(R.string.affirmation_management),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White
+                )
             )
+        }
+    ) { paddingValues ->
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
+                .padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp)
+            ) {
 
             // 暗示语列表标题
             Text(
@@ -175,13 +194,7 @@ fun AffirmationSettingsScreen(
             )
 
             Spacer(modifier = Modifier.height(20.dp))
-
-            // 返回按钮
-            SecondaryButton(
-                text = stringResource(R.string.back),
-                onClick = onNavigateBack,
-                modifier = Modifier.fillMaxWidth()
-            )
+            }
         }
 
         // 添加暗示语对话框

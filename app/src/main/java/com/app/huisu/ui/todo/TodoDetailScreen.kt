@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,13 +36,13 @@ fun TodoDetailScreen(
     val uiState by viewModel.uiState.collectAsState()
     var todo by remember { mutableStateOf<TodoItem?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    var showEditDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(todoId) {
-        // 查找TODO项目
-        uiState.todos.find { it.id == todoId }?.let {
-            todo = it
-            isLoading = false
-        }
+    LaunchedEffect(todoId, uiState.todos) {
+        // 查找TODO项目，并同步更新本地的todo
+        val foundTodo = uiState.todos.find { it.id == todoId }
+        todo = foundTodo
+        isLoading = false  // 无论是否找到都设置为false，避免无限加载
     }
 
     if (isLoading) {
@@ -55,6 +56,27 @@ fun TodoDetailScreen(
     }
 
     todo?.let { currentTodo ->
+        // 显示编辑对话框
+        if (showEditDialog) {
+            EditTodoDialog(
+                todo = currentTodo,
+                categories = uiState.categories,
+                onDismiss = { showEditDialog = false },
+                onConfirm = { id, title, description, categoryId, priority, dueDate ->
+                    viewModel.updateTodo(
+                        currentTodo.copy(
+                            title = title,
+                            description = description,
+                            categoryId = categoryId,
+                            priority = priority,
+                            dueDate = dueDate
+                        )
+                    )
+                    showEditDialog = false
+                }
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -69,10 +91,12 @@ fun TodoDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showEditDialog = true }) {
+                        Icon(Icons.Default.Edit, contentDescription = "编辑", tint = Color(0xFF667EEA))
+                    }
                     IconButton(
                         onClick = {
                             viewModel.toggleTodoCompletion(currentTodo.id, currentTodo.isCompleted)
-                            onNavigateBack()
                         }
                     ) {
                         Icon(
@@ -121,37 +145,21 @@ fun TodoDetailScreen(
                             color = Color(0xFF333333)
                         )
 
-                        // 标题
+                        // 内容（只显示description）
                         Text(
-                            text = "标题",
+                            text = "内容",
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = Color(0xFF666666)
                         )
                         Text(
-                            text = currentTodo.title,
+                            text = currentTodo.description.ifEmpty { currentTodo.title },
                             fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.Medium,
                             color = Color(0xFF333333),
-                            textDecoration = if (currentTodo.isCompleted) TextDecoration.LineThrough else null
+                            textDecoration = if (currentTodo.isCompleted) TextDecoration.LineThrough else null,
+                            lineHeight = 24.sp
                         )
-
-                        // 描述
-                        if (currentTodo.description.isNotEmpty()) {
-                            Text(
-                                text = "描述",
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFF666666),
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                            Text(
-                                text = currentTodo.description,
-                                fontSize = 14.sp,
-                                color = Color(0xFF333333),
-                                lineHeight = 20.sp
-                            )
-                        }
 
                         // 状态
                         Row(
