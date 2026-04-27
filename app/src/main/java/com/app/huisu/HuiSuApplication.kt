@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import com.app.huisu.data.preferences.AppPreferences
 import com.app.huisu.data.repository.AffirmationRepository
+import com.app.huisu.data.repository.CloudSyncRepository
 import com.app.huisu.data.repository.VideoLinkRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -27,26 +28,29 @@ class HuiSuApplication : Application() {
     @Inject
     lateinit var appPreferences: AppPreferences
 
+    @Inject
+    lateinit var cloudSyncRepository: CloudSyncRepository
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannels()
-        initializeDefaultData()
+        applicationScope.launch {
+            runCatching { cloudSyncRepository.syncOnAppStart() }
+            initializeDefaultData()
+        }
     }
 
-    private fun initializeDefaultData() {
-        applicationScope.launch {
-            // 检查是否已有视频链接，如果没有则初始化默认链接
-            val existingLinks = videoLinkRepository.getAllVideoLinks().first()
-            if (existingLinks.isEmpty()) {
-                videoLinkRepository.initializeDefaultLinks()
-            }
+    private suspend fun initializeDefaultData() {
+        val existingLinks = videoLinkRepository.getAllVideoLinks().first()
+        if (existingLinks.isEmpty()) {
+            videoLinkRepository.initializeDefaultLinks()
+        }
 
-            if (!appPreferences.affirmationsInitialized.first()) {
-                affirmationRepository.initializeDefaultAffirmations()
-                appPreferences.setAffirmationsInitialized(true)
-            }
+        if (!appPreferences.affirmationsInitialized.first()) {
+            affirmationRepository.initializeDefaultAffirmations()
+            appPreferences.setAffirmationsInitialized(true)
         }
     }
 

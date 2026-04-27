@@ -39,7 +39,7 @@ class DatabaseSnapshotStore @Inject constructor(
                 val rows = tables.optJSONArray(table) ?: return@forEach
                 for (index in 0 until rows.length()) {
                     val row = rows.optJSONObject(index) ?: continue
-                    db.insertOrReplace(table, row)
+                    db.mergeRow(table, row)
                 }
             }
             db.setTransactionSuccessful()
@@ -48,37 +48,126 @@ class DatabaseSnapshotStore @Inject constructor(
         }
     }
 
-    private fun Cursor.toJsonArray(): JSONArray {
-        val rows = JSONArray()
-        val columns = columnNames
+    private fun SupportSQLiteDatabase.mergeRow(table: String, incoming: JSONObject) {
+        val incomingId = incoming.optLong("id", 0L)
+        if (incomingId <= 0L) {
+            insertOrReplace(table, incoming)
+            return
+        }
 
-        while (moveToNext()) {
-            val row = JSONObject()
-            columns.forEachIndexed { index, column ->
-                when (getType(index)) {
-                    Cursor.FIELD_TYPE_NULL -> row.put(column, JSONObject.NULL)
-                    Cursor.FIELD_TYPE_INTEGER -> row.put(column, getLong(index))
-                    Cursor.FIELD_TYPE_FLOAT -> row.put(column, getDouble(index))
-                    Cursor.FIELD_TYPE_STRING -> row.put(column, getString(index))
-                    Cursor.FIELD_TYPE_BLOB -> row.put(
-                        column,
-                        Base64.encodeToString(getBlob(index), Base64.NO_WRAP)
-                    )
+        val local = queryRowById(table, incomingId)
+        if (local == null) {
+            insertOrReplace(table, incoming)
+            return
+        }
+
+        if (table in UPDATED_AT_TABLES) {
+            val incomingUpdatedAt = incoming.optLong("updatedAt", Long.MIN_VALUE)
+            val localUpdatedAt = local.optLong("updatedAt", Long.MIN_VALUE)
+            if (incomingUpdatedAt > localUpdatedAt) {
+                insertOrReplace(table, incoming)
+            }
+            return
+        }
+
+        if (rowsEquivalent(local, incoming, ignoreId = false)) return
+        if (containsEquivalentRow(table, incoming, ignoreId = true)) return
+
+        val duplicate = JSONObject(incoming.toString())
+        duplicate.remove("id")
+        insertWithoutId(table, duplicate)
+    }
+
+    private fun SupportSQLiteDatabase.queryRowById(table: String, id: Long): JSONObject? {
+        query("SELECT * FROM `${quote(table)}` WHERE `id` = ?", arrayOf(id)).use { cursor ->
+            if (!cursor.moveToFirst()) return null
+            return cursor.currentRowToJson()
+        }
+    }
+
+    private fun SupportSQLiteDatabase.containsEquivalentRow(
+        table: String,
+        row: JSONObject,
+        ignoreId: Boolean
+    ): Boolean {
+        query("SELECT * FROM `${quote(table)}`").use { cursor ->
+            while (cursor.moveToNext()) {
+                if (rowsEquivalent(cursor.currentRowToJson(), row, ignoreId)) {
+                    return true
                 }
             }
-            rows.put(row)
+        }
+        return false
+    }
+
+    private fun rowsEquivalent(
+        left: JSONObject,
+        right: JSONObject,
+        ignoreId: Boolean
+    ): Boolean {
+        val leftKeys = left.keys().asSequence().filterNot { ignoreId && it == "id" }.toSet()
+        val rightKeys = right.keys().asSequence().filterNot { ignoreId && it == "id" }.toSet()
+        if (leftKeys != rightKeys) return false
+
+        return leftKeys.all { key ->
+            normalizeJsonValue(left.opt(key)) == normalizeJsonValue(right.opt(key))
+        }
+    }
+
+    private fun normalizeJsonValue(value: Any?): String {
+        return when (value) {
+            null, JSONObject.NULL -> "null"
+            is Number -> value.toDouble().toString()
+            else -> value.toString()
+        }
+    }
+
+    private fun Cursor.toJsonArray(): JSONArray {
+        val rows = JSONArray()
+        while (moveToNext()) {
+            rows.put(currentRowToJson())
         }
         return rows
     }
 
+    private fun Cursor.currentRowToJson(): JSONObject {
+        val row = JSONObject()
+        columnNames.forEachIndexed { index, column ->
+            when (getType(index)) {
+                Cursor.FIELD_TYPE_NULL -> row.put(column, JSONObject.NULL)
+                Cursor.FIELD_TYPE_INTEGER -> row.put(column, getLong(index))
+                Cursor.FIELD_TYPE_FLOAT -> row.put(column, getDouble(index))
+                Cursor.FIELD_TYPE_STRING -> row.put(column, getString(index))
+                Cursor.FIELD_TYPE_BLOB -> row.put(
+                    column,
+                    Base64.encodeToString(getBlob(index), Base64.NO_WRAP)
+                )
+            }
+        }
+        return row
+    }
+
     private fun SupportSQLiteDatabase.insertOrReplace(table: String, row: JSONObject) {
+        insertRow(table, row, replace = true)
+    }
+
+    private fun SupportSQLiteDatabase.insertWithoutId(table: String, row: JSONObject) {
+        insertRow(table, row, replace = false)
+    }
+
+    private fun SupportSQLiteDatabase.insertRow(
+        table: String,
+        row: JSONObject,
+        replace: Boolean
+    ) {
         val columns = row.keys().asSequence().toList()
         if (columns.isEmpty()) return
 
         val placeholders = columns.joinToString(", ") { "?" }
         val columnSql = columns.joinToString(", ") { "`${quote(it)}`" }
+        val verb = if (replace) "INSERT OR REPLACE" else "INSERT"
         val statement = compileStatement(
-            "INSERT OR REPLACE INTO `${quote(table)}` ($columnSql) VALUES ($placeholders)"
+            "$verb INTO `${quote(table)}` ($columnSql) VALUES ($placeholders)"
         )
 
         columns.forEachIndexed { index, column ->
@@ -109,6 +198,12 @@ class DatabaseSnapshotStore @Inject constructor(
             "affirmations",
             "video_links",
             "achievements",
+            "todo_categories",
+            "todo_items",
+            "quick_notes"
+        )
+
+        private val UPDATED_AT_TABLES = setOf(
             "todo_categories",
             "todo_items",
             "quick_notes"

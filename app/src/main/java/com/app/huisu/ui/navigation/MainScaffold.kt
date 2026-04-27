@@ -1,5 +1,8 @@
 package com.app.huisu.ui.navigation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -61,6 +65,7 @@ import com.app.huisu.ui.statistics.StatisticsViewModel
 import com.app.huisu.ui.theme.Mist400
 import com.app.huisu.ui.theme.Purple667
 import com.app.huisu.ui.video.VideoSettingsScreen
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -77,6 +82,12 @@ fun MainScaffold(navController: NavHostController) {
     val currentRoute = navBackStackEntry?.destination?.route
 
     var isNavigating by remember { mutableStateOf(false) }
+    var showInitialDataLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        delay(1_000L)
+        showInitialDataLoading = false
+    }
 
     LaunchedEffect(currentRoute) {
         if (!isNavigating) {
@@ -145,7 +156,27 @@ fun MainScaffold(navController: NavHostController) {
                 currentRoute = currentRoute,
                 onNavigate = { page ->
                     coroutineScope.launch {
-                        pagerState.animateScrollToPage(page)
+                        val targetRoute = when (page) {
+                            0 -> Screen.QuickNote.route
+                            1 -> Screen.Meditation.route
+                            2 -> Screen.Affirmation.route
+                            3 -> Screen.Todo.route
+                            4 -> Screen.Statistics.route
+                            else -> Screen.QuickNote.route
+                        }
+
+                        isNavigating = true
+                        pagerState.scrollToPage(page)
+                        if (currentRoute != targetRoute) {
+                            navController.navigate(targetRoute) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = false
+                                }
+                                launchSingleTop = true
+                                restoreState = false
+                            }
+                        }
+                        isNavigating = false
                     }
                 }
             )
@@ -201,69 +232,83 @@ fun MainScaffold(navController: NavHostController) {
                         )
                     }
                 }
+                InitialDataLoadingBanner(
+                    visible = showInitialDataLoading,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 18.dp, vertical = 12.dp)
+                )
             }
         } else {
-            NavHost(
-                navController = navController,
-                startDestination = Screen.QuickNote.route,
-                modifier = Modifier.padding(paddingValues)
-            ) {
-                composable(Screen.QuickNote.route) { }
-                composable(Screen.Meditation.route) { }
-                composable(Screen.Affirmation.route) { }
-                composable(Screen.Todo.route) { }
-                composable(Screen.Statistics.route) { }
+            Box(modifier = Modifier.padding(paddingValues)) {
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.QuickNote.route,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    composable(Screen.QuickNote.route) { }
+                    composable(Screen.Meditation.route) { }
+                    composable(Screen.Affirmation.route) { }
+                    composable(Screen.Todo.route) { }
+                    composable(Screen.Statistics.route) { }
 
-                composable(Screen.MeditationTimer.route) {
-                    MeditationTimerScreen(onBack = { navController.popBackStack() })
-                }
+                    composable(Screen.MeditationTimer.route) {
+                        MeditationTimerScreen(onBack = { navController.popBackStack() })
+                    }
 
-                composable(Screen.MeditationRecords.route) {
-                    MeditationRecordsScreen(onBack = { navController.popBackStack() })
-                }
+                    composable(Screen.MeditationRecords.route) {
+                        MeditationRecordsScreen(onBack = { navController.popBackStack() })
+                    }
 
-                composable(Screen.VideoSettings.route) {
-                    VideoSettingsScreen(onNavigateBack = { navController.popBackStack() })
-                }
+                    composable(Screen.VideoSettings.route) {
+                        VideoSettingsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
 
-                composable(Screen.AffirmationTimer.route) {
-                    AffirmationTimerScreen(
-                        viewModel = affirmationViewModel,
-                        onBack = { navController.popBackStack() }
-                    )
-                }
+                    composable(Screen.AffirmationTimer.route) {
+                        AffirmationTimerScreen(
+                            viewModel = affirmationViewModel,
+                            onBack = { navController.popBackStack() }
+                        )
+                    }
 
-                composable(Screen.AffirmationRecords.route) {
-                    AffirmationRecordsScreen(onBack = { navController.popBackStack() })
-                }
+                    composable(Screen.AffirmationRecords.route) {
+                        AffirmationRecordsScreen(onBack = { navController.popBackStack() })
+                    }
 
-                composable(Screen.AffirmationSettings.route) {
-                    AffirmationSettingsScreen(onNavigateBack = { navController.popBackStack() })
-                }
+                    composable(Screen.AffirmationSettings.route) {
+                        AffirmationSettingsScreen(onNavigateBack = { navController.popBackStack() })
+                    }
 
-                composable(Screen.AffirmationManagement.route) {
-                    com.app.huisu.ui.affirmation.AffirmationManagementScreen(
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                    composable(Screen.AffirmationManagement.route) {
+                        com.app.huisu.ui.affirmation.AffirmationManagementScreen(
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
 
-                composable(Screen.TodoDetail.route) { backStackEntry ->
-                    val todoId = backStackEntry.arguments?.getString("todoId")?.toLongOrNull() ?: 0L
-                    com.app.huisu.ui.todo.TodoDetailScreen(
-                        todoId = todoId,
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                    composable(Screen.TodoDetail.route) { backStackEntry ->
+                        val todoId = backStackEntry.arguments?.getString("todoId")?.toLongOrNull() ?: 0L
+                        com.app.huisu.ui.todo.TodoDetailScreen(
+                            todoId = todoId,
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
 
-                composable(Screen.TodoCategoryManagement.route) {
-                    com.app.huisu.ui.todo.TodoCategoryManagementScreen(
-                        onNavigateBack = { navController.popBackStack() }
-                    )
-                }
+                    composable(Screen.TodoCategoryManagement.route) {
+                        com.app.huisu.ui.todo.TodoCategoryManagementScreen(
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
 
-                composable(Screen.CloudSync.route) {
-                    CloudSyncScreen()
+                    composable(Screen.CloudSync.route) {
+                        CloudSyncScreen()
+                    }
                 }
+                InitialDataLoadingBanner(
+                    visible = showInitialDataLoading,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 18.dp, vertical = 12.dp)
+                )
             }
         }
 
@@ -272,6 +317,43 @@ fun MainScaffold(navController: NavHostController) {
                 achievement = achievement,
                 onDismiss = { statisticsViewModel.dismissUnlockAnimation() }
             )
+        }
+    }
+}
+
+@Composable
+private fun InitialDataLoadingBanner(
+    visible: Boolean,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut(),
+        modifier = modifier
+    ) {
+        Surface(
+            color = Color.White.copy(alpha = 0.96f),
+            shape = RoundedCornerShape(18.dp),
+            shadowElevation = 4.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = Purple667
+                )
+                Text(
+                    text = "正在获取数据...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF4E5852),
+                    fontWeight = FontWeight.Medium
+                )
+            }
         }
     }
 }

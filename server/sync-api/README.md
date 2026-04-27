@@ -63,28 +63,22 @@ PUT /v1/sync/snapshot?force=true
 
 ## Docker 部署
 
-1. 创建环境文件：
-
-```bash
-cp .env.example .env
-```
-
-2. 修改 `.env`：
-
-```env
-SYNC_API_TOKEN=换成一段足够长的随机字符串
-SYNC_DB_PATH=/data/sync.db
-SYNC_MAX_BODY_BYTES=10485760
-SYNC_HISTORY_LIMIT=30
-```
-
-3. 启动：
+1. 启动服务：
 
 ```bash
 docker compose up -d --build
 ```
 
-4. 测试：
+默认 Token 是 `lee123456`。需要修改时再创建 `.env`：
+
+```env
+SYNC_API_TOKEN=lee123456
+SYNC_DB_PATH=/data/sync.db
+SYNC_MAX_BODY_BYTES=10485760
+SYNC_HISTORY_LIMIT=30
+```
+
+2. 测试：
 
 ```bash
 curl http://服务器IP:18080/health

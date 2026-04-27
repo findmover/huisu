@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 
 DB_PATH = Path(os.getenv("SYNC_DB_PATH", "/data/sync.db"))
-API_TOKEN = os.getenv("SYNC_API_TOKEN", "")
+API_TOKEN = os.getenv("SYNC_API_TOKEN", "lee123456")
 MAX_BODY_BYTES = int(os.getenv("SYNC_MAX_BODY_BYTES", str(10 * 1024 * 1024)))
 HISTORY_LIMIT = int(os.getenv("SYNC_HISTORY_LIMIT", "30"))
 

@@ -20,6 +20,8 @@ data class SyncUploadResponse(
     val updatedAt: String
 )
 
+class SyncConflictException(message: String) : IllegalStateException(message)
+
 @Singleton
 class SyncApiClient @Inject constructor() {
 
@@ -117,7 +119,7 @@ class SyncApiClient @Inject constructor() {
         connection.disconnect()
 
         if (responseCode == HttpURLConnection.HTTP_CONFLICT) {
-            error("云端版本已变化，请先合并云端到本地")
+            throw SyncConflictException("云端版本已变化")
         }
         if (responseCode == HttpURLConnection.HTTP_UNAUTHORIZED || responseCode == HttpURLConnection.HTTP_FORBIDDEN) {
             error("Token 无效或没有访问权限")

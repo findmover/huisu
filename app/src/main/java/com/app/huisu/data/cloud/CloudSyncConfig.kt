@@ -2,7 +2,7 @@ package com.app.huisu.data.cloud
 
 data class CloudSyncConfig(
     val serverUrl: String = DEFAULT_SERVER_URL,
-    val apiToken: String = "",
+    val apiToken: String = DEFAULT_API_TOKEN,
     val deviceId: String = "",
     val encryptionPassword: String = ""
 ) {
@@ -14,6 +14,7 @@ data class CloudSyncConfig(
 
     companion object {
         const val DEFAULT_SERVER_URL = "http://106.53.73.104:18080"
+        const val DEFAULT_API_TOKEN = "lee123456"
     }
 }
 
