@@ -8,7 +8,11 @@ import com.app.huisu.data.preferences.AppPreferences
 import com.app.huisu.data.repository.AffirmationRepository
 import com.app.huisu.util.CalculationUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -90,20 +94,22 @@ class AffirmationViewModel @Inject constructor(
 
     fun completeAffirmation() {
         val state = _timerState.value
-        if (state.startTime > 0) {
-            viewModelScope.launch {
+        if (state.startTime <= 0) return
+
+        val completedDuration = state.totalSeconds - state.remainingSeconds
+        viewModelScope.launch {
+            if (completedDuration > 0) {
                 val record = AffirmationRecord(
                     content = state.affirmationText,
                     startTime = state.startTime,
-                    duration = state.totalSeconds - state.remainingSeconds,
+                    duration = completedDuration,
                     isCompleted = true,
                     createDate = getTodayStartMillis()
                 )
                 affirmationRepository.insertRecord(record)
-
-                // 重置计时器
-                _timerState.update { AffirmationTimerState() }
             }
+
+            _timerState.update { AffirmationTimerState() }
         }
     }
 
@@ -112,6 +118,7 @@ class AffirmationViewModel @Inject constructor(
             val maxOrder = _uiState.value.affirmations.maxOfOrNull { it.order } ?: -1
             val affirmation = Affirmation(
                 content = content,
+                isSelected = _uiState.value.affirmations.none { it.isSelected },
                 order = maxOrder + 1
             )
             affirmationRepository.insertAffirmation(affirmation)
@@ -137,7 +144,7 @@ class AffirmationViewModel @Inject constructor(
 data class AffirmationUiState(
     val stats: AffirmationStats = AffirmationStats(),
     val affirmations: List<Affirmation> = emptyList(),
-    val duration: Int = 180 // seconds
+    val duration: Int = 180
 )
 
 data class AffirmationStats(

@@ -9,7 +9,8 @@ import javax.inject.Singleton
 
 @Singleton
 class MeditationRepository @Inject constructor(
-    private val meditationDao: MeditationDao
+    private val meditationDao: MeditationDao,
+    private val cloudSyncRepository: CloudSyncRepository
 ) {
 
     fun getAllRecords(): Flow<List<MeditationRecord>> {
@@ -66,15 +67,19 @@ class MeditationRepository @Inject constructor(
     }
 
     suspend fun insertRecord(record: MeditationRecord): Long {
-        return meditationDao.insert(record)
+        return meditationDao.insert(record).also {
+            cloudSyncRepository.requestAutoUpload()
+        }
     }
 
     suspend fun updateRecord(record: MeditationRecord) {
         meditationDao.update(record)
+        cloudSyncRepository.requestAutoUpload()
     }
 
     suspend fun deleteRecord(record: MeditationRecord) {
         meditationDao.delete(record)
+        cloudSyncRepository.requestAutoUpload()
     }
 
     private fun getTodayStartMillis(): Long {

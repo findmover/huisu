@@ -1,6 +1,16 @@
 package com.app.huisu.ui.navigation
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Equalizer
+import androidx.compose.material.icons.outlined.ListAlt
+import androidx.compose.material.icons.outlined.SelfImprovement
+import androidx.compose.ui.graphics.vector.ImageVector
+
 sealed class Screen(val route: String) {
+    object QuickNote : Screen("quick_note")
+
     object Meditation : Screen("meditation")
     object MeditationTimer : Screen("meditation_timer")
     object MeditationRecords : Screen("meditation_records")
@@ -18,19 +28,19 @@ sealed class Screen(val route: String) {
     }
     object TodoCategoryManagement : Screen("todo_category_management")
 
-    object HotSearch : Screen("hot_search")
+    object CloudSync : Screen("cloud_sync")
 
     object Statistics : Screen("statistics")
 }
 
 sealed class BottomNavItem(
     val route: String,
-    val icon: String,
+    val icon: ImageVector,
     val label: String
 ) {
-    object Meditation : BottomNavItem(Screen.Meditation.route, "🧘", "冥想")
-    object Affirmation : BottomNavItem(Screen.Affirmation.route, "💭", "默塑")
-    object Todo : BottomNavItem(Screen.Todo.route, "📋", "TODO")
-    object HotSearch : BottomNavItem(Screen.HotSearch.route, "🔥", "热搜")
-    object Statistics : BottomNavItem(Screen.Statistics.route, "📊", "统计")
+    object QuickNote : BottomNavItem(Screen.QuickNote.route, Icons.Outlined.Edit, "速记")
+    object Meditation : BottomNavItem(Screen.Meditation.route, Icons.Outlined.SelfImprovement, "冥想")
+    object Affirmation : BottomNavItem(Screen.Affirmation.route, Icons.Outlined.AutoAwesome, "默念")
+    object Todo : BottomNavItem(Screen.Todo.route, Icons.Outlined.ListAlt, "待办")
+    object Statistics : BottomNavItem(Screen.Statistics.route, Icons.Outlined.Equalizer, "统计")
 }

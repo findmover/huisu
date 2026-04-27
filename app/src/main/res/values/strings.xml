@@ -3,7 +3,7 @@
 
     <!-- Tab Navigation -->
     <string name="tab_meditation">冥想</string>
-    <string name="tab_affirmation">积极暗示</string>
+    <string name="tab_affirmation">默念</string>
     <string name="tab_statistics">统计</string>
 
     <!-- Meditation -->
@@ -47,14 +47,14 @@
     <string name="affirmation_this_week">本周完成率</string>
     <string name="affirmation_this_month">本月完成率</string>
     <string name="affirmation_continuous_days">连续完成</string>
-    <string name="affirmation_manage">管理暗示语</string>
+    <string name="affirmation_manage">管理默念文案</string>
     <string name="affirmation_repeat_gently">在心中轻轻重复这段话...</string>
-    <string name="affirmation_add_new">添加新暗示语</string>
-    <string name="affirmation_content_hint">输入你的积极暗示语,比如:我每天都在进步,我值得拥有美好的生活...</string>
+    <string name="affirmation_add_new">添加新默念文案</string>
+    <string name="affirmation_content_hint">输入你的默念文案,比如:我每天都在进步,我值得拥有美好的生活...</string>
 
     <!-- Statistics -->
     <string name="stats_meditation_trend">本周冥想趋势</string>
-    <string name="stats_affirmation_rate">本月积极暗示完成率</string>
+    <string name="stats_affirmation_rate">本月默念完成率</string>
     <string name="stats_calendar">本月完成日历</string>
     <string name="stats_achievements">成就徽章</string>
     <string name="stats_all_completed">全部完成</string>
@@ -87,14 +87,14 @@
     <string name="cancel">取消</string>
 
     <!-- Affirmation Management -->
-    <string name="affirmation_management">暗示语管理</string>
-    <string name="my_affirmations">我的暗示语</string>
-    <string name="no_affirmations_yet">还没有暗示语</string>
-    <string name="add_new_affirmation">添加新暗示语</string>
-    <string name="add_affirmation">添加暗示语</string>
-    <string name="edit_affirmation">编辑暗示语</string>
-    <string name="affirmation_content">暗示语内容</string>
-    <string name="enter_affirmation">输入你的积极暗示语</string>
+    <string name="affirmation_management">默念文案管理</string>
+    <string name="my_affirmations">我的默念文案</string>
+    <string name="no_affirmations_yet">还没有默念文案</string>
+    <string name="add_new_affirmation">添加新默念文案</string>
+    <string name="add_affirmation">添加默念文案</string>
+    <string name="edit_affirmation">编辑默念文案</string>
+    <string name="affirmation_content">默念文案内容</string>
+    <string name="enter_affirmation">输入你的默念文案</string>
     <string name="reminder_time_settings">提醒时间设置</string>
     <string name="affirmation_morning_reminder">早晨提醒</string>
     <string name="affirmation_noon_reminder">中午提醒</string>
@@ -116,9 +116,9 @@
 
     <!-- Notifications -->
     <string name="notification_channel_meditation">冥想计时</string>
-    <string name="notification_channel_affirmation">积极暗示提醒</string>
+    <string name="notification_channel_affirmation">默念提醒</string>
     <string name="notification_meditation_title">冥想进行中</string>
     <string name="notification_meditation_text">已进行 %s</string>
-    <string name="notification_affirmation_title">该进行积极暗示了</string>
+    <string name="notification_affirmation_title">该进行默念了</string>
     <string name="notification_affirmation_text">点击开始今日的%s默念</string>
 </resources>

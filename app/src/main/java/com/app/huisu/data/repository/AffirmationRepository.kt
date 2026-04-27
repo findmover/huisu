@@ -5,17 +5,18 @@ import com.app.huisu.data.dao.AffirmationRecordDao
 import com.app.huisu.data.entity.Affirmation
 import com.app.huisu.data.entity.AffirmationRecord
 import kotlinx.coroutines.flow.Flow
-import java.util.*
+import kotlinx.coroutines.flow.first
+import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AffirmationRepository @Inject constructor(
     private val affirmationDao: AffirmationDao,
-    private val affirmationRecordDao: AffirmationRecordDao
+    private val affirmationRecordDao: AffirmationRecordDao,
+    private val cloudSyncRepository: CloudSyncRepository
 ) {
 
-    // Affirmation CRUD
     fun getActiveAffirmations(): Flow<List<Affirmation>> {
         return affirmationDao.getActiveAffirmations()
     }
@@ -29,18 +30,24 @@ class AffirmationRepository @Inject constructor(
     }
 
     suspend fun insertAffirmation(affirmation: Affirmation): Long {
-        return affirmationDao.insert(affirmation)
+        return affirmationDao.insert(affirmation).also {
+            cloudSyncRepository.requestAutoUpload()
+        }
     }
 
     suspend fun updateAffirmation(affirmation: Affirmation) {
         affirmationDao.update(affirmation)
+        cloudSyncRepository.requestAutoUpload()
     }
 
     suspend fun deleteAffirmation(affirmation: Affirmation) {
         affirmationDao.delete(affirmation)
+        if (affirmation.isSelected) {
+            ensureSelectedAffirmation()
+        }
+        cloudSyncRepository.requestAutoUpload()
     }
 
-    // Affirmation Records
     fun getAllRecords(): Flow<List<AffirmationRecord>> {
         return affirmationRecordDao.getAllRecords()
     }
@@ -84,25 +91,72 @@ class AffirmationRepository @Inject constructor(
     }
 
     suspend fun insertRecord(record: AffirmationRecord): Long {
-        return affirmationRecordDao.insert(record)
+        return affirmationRecordDao.insert(record).also {
+            cloudSyncRepository.requestAutoUpload()
+        }
     }
 
     suspend fun updateRecord(record: AffirmationRecord) {
         affirmationRecordDao.update(record)
+        cloudSyncRepository.requestAutoUpload()
     }
 
     suspend fun deleteRecord(record: AffirmationRecord) {
         affirmationRecordDao.delete(record)
+        cloudSyncRepository.requestAutoUpload()
     }
 
     suspend fun initializeDefaultAffirmations() {
-        // 初始化默认暗示语
+        val existingAffirmations = affirmationDao.getAllAffirmations().first()
+        if (existingAffirmations.isNotEmpty()) {
+            ensureSelectedAffirmation(existingAffirmations)
+            return
+        }
+
         val defaultAffirmations = listOf(
-            Affirmation(content = "我充满力量和自信,每一天都在变得更好,我值得拥有美好的生活", order = 0),
-            Affirmation(content = "我专注当下,活在此刻,内心充满平静和喜悦", order = 1),
-            Affirmation(content = "我接纳自己的一切,我正在成为更好的自己", order = 2)
+            Affirmation(
+                content = "我充满力量和自信，每一天都在变得更好。我值得拥有美好的生活。",
+                isSelected = true,
+                order = 0
+            ),
+            Affirmation(
+                content = "我专注当下，活在此刻，内心充满平静和喜悦。",
+                order = 1
+            ),
+            Affirmation(
+                content = "我接纳自己的每一部分，我正在成为更好的自己。",
+                order = 2
+            )
         )
         defaultAffirmations.forEach { insertAffirmation(it) }
+    }
+
+    suspend fun selectAffirmation(affirmationId: Long) {
+        val affirmations = affirmationDao.getAllAffirmations().first()
+        if (affirmations.isEmpty()) return
+
+        affirmations.forEach { affirmation ->
+            val shouldBeSelected = affirmation.id == affirmationId
+            if (affirmation.isSelected != shouldBeSelected) {
+                affirmationDao.update(affirmation.copy(isSelected = shouldBeSelected))
+            }
+        }
+    }
+
+    private suspend fun ensureSelectedAffirmation(
+        affirmations: List<Affirmation>? = null
+    ) {
+        val currentAffirmations = affirmations ?: affirmationDao.getAllAffirmations().first()
+        if (currentAffirmations.isEmpty()) return
+
+        val selectedId = currentAffirmations.firstOrNull { it.isSelected }?.id ?: currentAffirmations.first().id
+        currentAffirmations.forEach { affirmation ->
+            val shouldBeSelected = affirmation.id == selectedId
+            if (affirmation.isSelected != shouldBeSelected) {
+                affirmationDao.update(affirmation.copy(isSelected = shouldBeSelected))
+            }
+        }
+        cloudSyncRepository.requestAutoUpload()
     }
 
     private fun getTodayStartMillis(): Long {

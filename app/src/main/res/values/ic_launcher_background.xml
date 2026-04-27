@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 使用紫色渐变的起始色作为背景色 -->
-    <color name="ic_launcher_background">#667EEA</color>
+    <color name="ic_launcher_background">#F3F0E8</color>
 </resources>

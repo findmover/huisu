@@ -4,6 +4,8 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
+import com.app.huisu.data.preferences.AppPreferences
+import com.app.huisu.data.repository.AffirmationRepository
 import com.app.huisu.data.repository.VideoLinkRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -18,6 +20,12 @@ class HuiSuApplication : Application() {
 
     @Inject
     lateinit var videoLinkRepository: VideoLinkRepository
+
+    @Inject
+    lateinit var affirmationRepository: AffirmationRepository
+
+    @Inject
+    lateinit var appPreferences: AppPreferences
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -34,6 +42,11 @@ class HuiSuApplication : Application() {
             if (existingLinks.isEmpty()) {
                 videoLinkRepository.initializeDefaultLinks()
             }
+
+            if (!appPreferences.affirmationsInitialized.first()) {
+                affirmationRepository.initializeDefaultAffirmations()
+                appPreferences.setAffirmationsInitialized(true)
+            }
         }
     }
 
@@ -49,10 +62,10 @@ class HuiSuApplication : Application() {
 
             val affirmationChannel = NotificationChannel(
                 CHANNEL_AFFIRMATION,
-                "积极暗示提醒",
+                "默念提醒",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "定时提醒进行积极暗示"
+                description = "定时提醒进行默念"
             }
 
             val notificationManager = getSystemService(NotificationManager::class.java)

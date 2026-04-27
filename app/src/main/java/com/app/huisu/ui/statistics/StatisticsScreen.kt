@@ -1,369 +1,300 @@
 package com.app.huisu.ui.statistics
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.app.huisu.R
 import com.app.huisu.data.entity.Achievement
 import com.app.huisu.data.entity.AchievementLevel
+import com.app.huisu.ui.components.GlassCard
+import com.app.huisu.ui.components.InfoPill
+import com.app.huisu.ui.components.SectionHeader
 import com.app.huisu.ui.components.StatBox
+import com.app.huisu.ui.components.ZenBackground
+import com.app.huisu.ui.theme.CardBackground
+import com.app.huisu.ui.theme.DividerColor
+import com.app.huisu.ui.theme.ErrorRed
+import com.app.huisu.ui.theme.GlassWhite
+import com.app.huisu.ui.theme.Mist400
+import com.app.huisu.ui.theme.Purple667
+import com.app.huisu.ui.theme.Sage400
+import com.app.huisu.ui.theme.SurfaceLight
+import com.app.huisu.ui.theme.TextPrimary
+import com.app.huisu.ui.theme.TextSecondary
+import com.app.huisu.ui.theme.TextTertiary
 import java.util.Calendar
+import java.util.Locale
 
 @Composable
 fun StatisticsScreen(
-    viewModel: StatisticsViewModel = hiltViewModel()
+    viewModel: StatisticsViewModel = hiltViewModel(),
+    onNavigateToCloudSync: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    // 进入动画状态
     var visible by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         visible = true
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp)
-    ) {
-        // 标题 - 带渐入动画
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(animationSpec = tween(500)) + slideInVertically(
-                animationSpec = tween(500),
-                initialOffsetY = { -30 }
-            )
+    ZenBackground {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 18.dp, vertical = 18.dp)
+                .padding(bottom = 96.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = stringResource(R.string.tab_statistics),
-                style = MaterialTheme.typography.displayMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(animationSpec = tween(600)) + slideInVertically(
+                    animationSpec = tween(600),
+                    initialOffsetY = { -36 }
+                )
+            ) {
+                StatisticsHero(
+                    statistics = uiState.statistics,
+                    calendarData = uiState.calendarData,
+                    onNavigateToCloudSync = onNavigateToCloudSync
+                )
+            }
 
-        Spacer(modifier = Modifier.height(20.dp))
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(animationSpec = tween(660, delayMillis = 70))
+            ) {
+                StatisticsSummaryGrid(statistics = uiState.statistics)
+            }
 
-        // 本月完成日历 - 带渐入和缩放动画
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(animationSpec = tween(600, delayMillis = 100)) +
-                    scaleIn(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        ),
-                        initialScale = 0.9f
-                    )
-        ) {
-            ChartCard(title = stringResource(R.string.stats_calendar)) {
-                CalendarView(calendarData = uiState.calendarData)
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(animationSpec = tween(720, delayMillis = 120))
+            ) {
+                CalendarCard(calendarData = uiState.calendarData)
+            }
+
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(animationSpec = tween(780, delayMillis = 170))
+            ) {
+                AchievementOverviewCard(
+                    achievements = uiState.achievements,
+                    onAchievementClick = viewModel::onAchievementClick
+                )
             }
         }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // 成就徽章 - 带渐入和缩放动画
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(animationSpec = tween(600, delayMillis = 200)) +
-                    scaleIn(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        ),
-                        initialScale = 0.9f
-                    )
-        ) {
-            ChartCard(title = stringResource(R.string.stats_achievements)) {
-                Column {
-                    AchievementGrid(
-                        achievements = uiState.achievements,
-                        onAchievementClick = { viewModel.onAchievementClick(it) }
-                    )
-
-                    Spacer(modifier = Modifier.height(15.dp))
-
-                    // 成就说明
-                    Text(
-                        text = "💡 每个成就有5个等级:青铜→白银→黄金→钻石→传奇",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF666666),
-                        fontSize = 12.sp,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        // 总体统计 - 带渐入和滑入动画
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(animationSpec = tween(600, delayMillis = 300)) +
-                    slideInVertically(
-                        animationSpec = tween(600, delayMillis = 300),
-                        initialOffsetY = { 40 }
-                    )
-        ) {
-            Column {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(15.dp)
-                ) {
-                    StatBox(
-                        title = "总冥想时长",
-                        value = String.format("%.1f", uiState.statistics.totalMeditationDuration / 3600f),
-                        unit = stringResource(R.string.hours),
-                        modifier = Modifier.weight(1f)
-                    )
-                    StatBox(
-                        title = "总默念时长",
-                        value = String.format("%.1f", uiState.statistics.totalAffirmationDuration / 3600f),
-                        unit = stringResource(R.string.hours),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(15.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(15.dp)
-                ) {
-                    StatBox(
-                        title = "冥想总次数",
-                        value = "${uiState.statistics.totalMeditationCount}",
-                        unit = stringResource(R.string.times),
-                        modifier = Modifier.weight(1f)
-                    )
-                    StatBox(
-                        title = "默念总次数",
-                        value = "${uiState.statistics.totalAffirmationCount}",
-                        unit = stringResource(R.string.times),
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
     }
 
-    // 成就详情对话框
     uiState.selectedAchievement?.let { achievement ->
         AchievementDetailDialog(
             achievement = achievement,
-            onDismiss = { viewModel.dismissAchievementDialog() }
+            onDismiss = viewModel::dismissAchievementDialog
         )
     }
 
-    // 成就解锁动画弹窗
     uiState.newlyUnlockedAchievement?.let { achievement ->
         AchievementUnlockDialog(
             achievement = achievement,
-            onDismiss = { viewModel.dismissUnlockAnimation() }
+            onDismiss = viewModel::dismissUnlockAnimation
         )
     }
 }
 
 @Composable
-private fun ChartCard(
-    title: String,
-    content: @Composable () -> Unit
+private fun StatisticsHero(
+    statistics: StatisticsData,
+    calendarData: CalendarData,
+    onNavigateToCloudSync: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(15.dp))
-            content()
-        }
-    }
-}
+    val totalSessions = statistics.totalMeditationCount + statistics.totalAffirmationCount
 
-@Composable
-private fun CalendarView(calendarData: CalendarData) {
-    val days = listOf("日", "一", "二", "三", "四", "五", "六")
-    val cal = Calendar.getInstance()
-    val today = cal.get(Calendar.DAY_OF_MONTH)
-    val daysInMonth = cal.getActualMaximum(Calendar.DAY_OF_MONTH)
-
-    // 获取本月第一天是星期几
-    cal.set(Calendar.DAY_OF_MONTH, 1)
-    val firstDayOfWeek = cal.get(Calendar.DAY_OF_WEEK) - 1 // 0=Sunday
-
-    Column {
-        // 星期标题
-        Row(modifier = Modifier.fillMaxWidth()) {
-            days.forEach { day ->
-                Text(
-                    text = day,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF999999)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // 日期网格
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(7),
-            modifier = Modifier.height(250.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // 添加空白格子以对齐第一天
-            items(firstDayOfWeek) {
-                Box(modifier = Modifier.aspectRatio(1f))
-            }
-
-            // 添加日期
-            items((1..daysInMonth).toList()) { day ->
-                CalendarDayItem(
-                    day = day,
-                    isBothCompleted = calendarData.bothCompletedDays.contains(day),
-                    isPartial = calendarData.meditationOnlyDays.contains(day) || calendarData.affirmationOnlyDays.contains(day),
-                    isToday = day == today
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(15.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(15.dp)) {
-            LegendItem("🟣", stringResource(R.string.stats_all_completed))
-            LegendItem("🟡", stringResource(R.string.stats_partial_completed))
-            LegendItem("⚪", stringResource(R.string.stats_not_started))
-        }
-    }
-}
-
-@Composable
-private fun CalendarDayItem(
-    day: Int,
-    isBothCompleted: Boolean,
-    isPartial: Boolean,
-    isToday: Boolean
-) {
-    Box(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .background(
-                color = when {
-                    isBothCompleted -> Color(0xFF667EEA)
-                    isPartial -> Color(0xFFFFD93D)
-                    else -> Color(0xFFF5F5F5)
-                },
-                shape = RoundedCornerShape(8.dp)
-            )
-            .then(
-                if (isToday) Modifier.padding(2.dp)
-                    .background(Color.Transparent, RoundedCornerShape(8.dp))
-                else Modifier
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = day.toString(),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (isToday) FontWeight.Bold else FontWeight.SemiBold,
-            color = if (isBothCompleted) Color.White else Color(0xFF333333)
-        )
-    }
-}
-
-@Composable
-private fun LegendItem(icon: String, text: String) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(text = icon, style = MaterialTheme.typography.bodySmall)
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF666666)
-        )
-    }
-}
-
-@Composable
-private fun AchievementGrid(
-    achievements: List<Achievement>,
-    onAchievementClick: (Achievement) -> Unit
-) {
-    if (achievements.isEmpty()) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "暂无成就数据",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF999999)
-            )
-        }
-    } else {
-        Column(
+    GlassCard {
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(15.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 按2列布局显示成就
-            achievements.chunked(2).forEach { rowAchievements ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(15.dp)
+            InfoPill(label = "本月活跃 ${calendarData.completedDays.size} 天")
+            InfoPill(label = "双完成 ${calendarData.bothCompletedDays.size} 天")
+            InfoPill(label = "累计练习 $totalSessions 次")
+        }
+        TextButton(onClick = onNavigateToCloudSync) {
+            Text(
+                text = "云同步设置",
+                style = MaterialTheme.typography.labelLarge,
+                color = Purple667
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatisticsSummaryGrid(statistics: StatisticsData) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatBox(
+                title = "冥想时长",
+                value = String.format(Locale.getDefault(), "%.1f", statistics.totalMeditationDuration / 3600f),
+                unit = "小时",
+                modifier = Modifier.weight(1f)
+            )
+            StatBox(
+                title = "默念时长",
+                value = String.format(Locale.getDefault(), "%.1f", statistics.totalAffirmationDuration / 3600f),
+                unit = "小时",
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            StatBox(
+                title = "冥想次数",
+                value = statistics.totalMeditationCount.toString(),
+                unit = "次",
+                modifier = Modifier.weight(1f)
+            )
+            StatBox(
+                title = "默念次数",
+                value = statistics.totalAffirmationCount.toString(),
+                unit = "次",
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CalendarCard(calendarData: CalendarData) {
+    val monthLabel = rememberCurrentMonthLabel()
+
+    GlassCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "本月打卡日历",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "冥想与默念会在这里留下每日痕迹。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            }
+            InfoPill(label = monthLabel)
+        }
+
+        CalendarGrid(calendarData = calendarData)
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            LegendPill(label = "双完成", color = Sage400)
+            LegendPill(label = "单项完成", color = Mist400)
+            LegendPill(label = "今日", color = Purple667)
+        }
+    }
+}
+
+@Composable
+private fun CalendarGrid(calendarData: CalendarData) {
+    val weekLabels = listOf("日", "一", "二", "三", "四", "五", "六")
+    val cells = rememberCalendarCells()
+    val today = Calendar.getInstance().get(Calendar.DAY_OF_MONTH)
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            weekLabels.forEach { label ->
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
                 ) {
-                    rowAchievements.forEach { achievement ->
-                        Box(modifier = Modifier.weight(1f)) {
-                            AchievementItem(
-                                achievement = achievement,
-                                onClick = { onAchievementClick(achievement) }
-                            )
-                        }
-                    }
-                    // 如果最后一行只有1个元素,添加空白占位
-                    if (rowAchievements.size == 1) {
-                        Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextTertiary
+                    )
+                }
+            }
+        }
+
+        cells.chunked(7).forEach { week ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                week.forEach { day ->
+                    if (day == null) {
+                        Spacer(
+                            modifier = Modifier
+                                .weight(1f)
+                                .aspectRatio(1f)
+                        )
+                    } else {
+                        CalendarDayCell(
+                            day = day,
+                            isToday = day == today,
+                            isBothCompleted = calendarData.bothCompletedDays.contains(day),
+                            isPartialCompleted = calendarData.meditationOnlyDays.contains(day) ||
+                                calendarData.affirmationOnlyDays.contains(day),
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
@@ -372,171 +303,203 @@ private fun AchievementGrid(
 }
 
 @Composable
-private fun AchievementItem(
-    achievement: Achievement,
-    onClick: () -> Unit
+private fun CalendarDayCell(
+    day: Int,
+    isToday: Boolean,
+    isBothCompleted: Boolean,
+    isPartialCompleted: Boolean,
+    modifier: Modifier = Modifier
 ) {
-    val isUnlocked = achievement.unlocked
-    val levelEmoji = achievement.level.icon
-    val levelName = achievement.level.displayName
+    val background = when {
+        isBothCompleted -> Sage400.copy(alpha = 0.26f)
+        isPartialCompleted -> Mist400.copy(alpha = 0.28f)
+        else -> Color.White.copy(alpha = 0.56f)
+    }
+    val border = when {
+        isToday -> BorderStroke(1.dp, Purple667.copy(alpha = 0.34f))
+        isBothCompleted -> BorderStroke(1.dp, Sage400.copy(alpha = 0.18f))
+        else -> BorderStroke(1.dp, DividerColor)
+    }
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isUnlocked) {
-                Color.Transparent
-            } else {
-                Color(0xFFF8F9FA)
-            }
-        ),
+        modifier = modifier.aspectRatio(1f),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = background),
+        border = border,
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = day.toString(),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isToday) FontWeight.SemiBold else FontWeight.Medium,
+                color = TextPrimary
+            )
+        }
+    }
+}
+
+@Composable
+private fun LegendPill(
+    label: String,
+    color: Color
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(color.copy(alpha = 0.8f), CircleShape)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary
+        )
+    }
+}
+
+@Composable
+private fun AchievementOverviewCard(
+    achievements: List<Achievement>,
+    onAchievementClick: (Achievement) -> Unit
+) {
+    GlassCard {
+        SectionHeader(
+            eyebrow = "成就进度",
+            title = "每一次练习都在积累",
+            subtitle = "点击卡片查看细节和下一个里程碑。"
+        )
+
+        if (achievements.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "暂时还没有成就数据",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+            }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                achievements.chunked(2).forEach { rowItems ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        rowItems.forEach { achievement ->
+                            AchievementItemCard(
+                                achievement = achievement,
+                                onClick = { onAchievementClick(achievement) },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        if (rowItems.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AchievementItemCard(
+    achievement: Achievement,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val accent = levelColor(achievement.level)
+    val progress = achievementProgress(achievement)
+    val remaining = achievementRemainingLabel(achievement)
+
+    Card(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (achievement.unlocked) {
+                accent.copy(alpha = 0.14f)
+            } else {
+                GlassWhite
+            }
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (achievement.unlocked) accent.copy(alpha = 0.18f) else DividerColor
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (isUnlocked) {
-                        Modifier.background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFFFFD93D),
-                                    Color(0xFFFFB800)
-                                )
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                    } else {
-                        Modifier
-                    }
-                )
-                .padding(15.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // 成就图标
                 Text(
                     text = achievement.icon,
-                    style = MaterialTheme.typography.displayMedium,
-                    fontSize = 40.sp
+                    fontSize = 28.sp
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // 成就名称
-                Text(
-                    text = achievement.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (isUnlocked) Color.White else Color(0xFF333333),
-                    textAlign = TextAlign.Center,
-                    fontSize = 13.sp,
-                    maxLines = 1
+                InfoPill(
+                    label = achievement.level.displayName,
+                    backgroundColor = accent.copy(alpha = 0.14f),
+                    contentColor = accent
                 )
+            }
 
-                Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = achievement.name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
 
-                // 等级显示
+            Text(
+                text = achievement.description,
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+
+            LinearProgressIndicator(
+                progress = progress,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp),
+                color = accent,
+                trackColor = accent.copy(alpha = 0.18f)
+            )
+
+            Text(
+                text = achievementProgressLabel(achievement),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextPrimary,
+                fontWeight = FontWeight.Medium
+            )
+
+            remaining?.let {
                 Text(
-                    text = "$levelEmoji $levelName",
+                    text = it,
                     style = MaterialTheme.typography.bodySmall,
-                    color = if (isUnlocked) Color.White.copy(alpha = 0.9f) else Color(0xFF666666),
-                    fontSize = 11.sp
+                    color = TextTertiary
                 )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // 进度条
-                val progress = if (achievement.targetValue > 0) {
-                    (achievement.currentValue.toFloat() / achievement.targetValue).coerceIn(0f, 1f)
-                } else 0f
-
-                val progressPercentage = (progress * 100).toInt()
-
-                // 渐变进度条
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .background(
-                            color = if (isUnlocked) Color.White.copy(alpha = 0.3f) else Color(0xFFE0E0E0),
-                            shape = RoundedCornerShape(4.dp)
-                        )
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(progress)
-                            .background(
-                                brush = if (isUnlocked) {
-                                    Brush.horizontalGradient(listOf(Color.White, Color.White))
-                                } else {
-                                    Brush.horizontalGradient(listOf(Color(0xFF667EEA), Color(0xFF764BA2)))
-                                },
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // 进度文字和百分比
-                val (progressText, remainingText) = when (achievement.key) {
-                    "meditation_duration" -> {
-                        val hours = achievement.currentValue / 3600f
-                        val targetHours = achievement.targetValue / 3600f
-                        val remaining = targetHours - hours
-                        Pair(
-                            String.format("%.1f/%.0f 小时", hours, targetHours),
-                            if (!isUnlocked && remaining > 0) String.format("还需 %.1f 小时", remaining) else null
-                        )
-                    }
-                    "streak" -> {
-                        val remaining = achievement.targetValue - achievement.currentValue
-                        Pair(
-                            "${achievement.currentValue}/${achievement.targetValue} 天",
-                            if (!isUnlocked && remaining > 0) "还需 $remaining 天" else null
-                        )
-                    }
-                    "affirmation_count" -> {
-                        val remaining = achievement.targetValue - achievement.currentValue
-                        Pair(
-                            "${achievement.currentValue}/${achievement.targetValue} 次",
-                            if (!isUnlocked && remaining > 0) "还需 $remaining 次" else null
-                        )
-                    }
-                    else -> {
-                        val remaining = achievement.targetValue - achievement.currentValue
-                        Pair(
-                            "${achievement.currentValue}/${achievement.targetValue} 次",
-                            if (!isUnlocked && remaining > 0) "还需 $remaining 次" else null
-                        )
-                    }
-                }
-
-                // 进度数值
-                Text(
-                    text = progressText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (isUnlocked) Color.White.copy(alpha = 0.9f) else Color(0xFF333333),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-
-                // 剩余提示 (仅未解锁时显示)
-                if (!isUnlocked && remainingText != null) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = remainingText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF999999),
-                        fontSize = 9.sp
-                    )
-                }
             }
         }
     }
@@ -547,220 +510,148 @@ private fun AchievementDetailDialog(
     achievement: Achievement,
     onDismiss: () -> Unit
 ) {
-    val levelColor = Color(achievement.level.color)
-
-    // 定义等级目标值，用于显示下一级信息
-    val levelTargets = when (achievement.key) {
-        "streak" -> listOf(7, 30, 100, 365, 1000) // 连续打卡
-        "meditation_count" -> listOf(7, 30, 100, 365, 1000) // 冥想大师
-        "meditation_duration" -> listOf(18000, 72000, 180000, 360000, 1800000) // 冥想时长
-        "affirmation_count" -> listOf(20, 50, 200, 500, 1000) // 默念达人
-        else -> listOf()
-    }
-
-    val levelNames = listOf("青铜", "白银", "黄金", "钻石", "传奇")
+    val accent = levelColor(achievement.level)
+    val progress = achievementProgress(achievement)
+    val milestones = achievementMilestones(achievement.key)
+    val nextMilestone = milestones.firstOrNull { it > achievement.currentValue }
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = SurfaceLight,
+        shape = RoundedCornerShape(28.dp),
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 成就图标
                 Text(
                     text = achievement.icon,
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontSize = 40.sp
+                    fontSize = 34.sp
                 )
-                // 成就名称和等级
-                Column {
-                    Text(achievement.name, style = MaterialTheme.typography.headlineSmall)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = achievement.level.icon,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = achievement.level.displayName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = levelColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = achievement.name,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "${achievement.level.icon} ${achievement.level.displayName}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = accent
+                    )
                 }
             }
         },
         text = {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(
                     text = achievement.description,
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
                 )
 
-                Spacer(modifier = Modifier.height(15.dp))
-
-                // 当前等级进度条
-                val progress = if (achievement.targetValue > 0) {
-                    (achievement.currentValue.toFloat() / achievement.targetValue).coerceIn(0f, 1f)
-                } else 0f
-
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = "当前等级进度",
+                            text = "当前进度",
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold
+                            color = TextPrimary
                         )
                         Text(
-                            text = "${achievement.currentValue} / ${achievement.targetValue}",
+                            text = achievementProgressLabel(achievement),
                             style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = levelColor
+                            color = accent,
+                            fontWeight = FontWeight.SemiBold
                         )
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
+
                     LinearProgressIndicator(
                         progress = progress,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(12.dp),
-                        color = levelColor,
-                        trackColor = levelColor.copy(alpha = 0.2f)
+                            .height(10.dp),
+                        color = accent,
+                        trackColor = accent.copy(alpha = 0.18f)
                     )
 
-                    Spacer(modifier = Modifier.height(5.dp))
                     Text(
-                        text = "${(progress * 100).toInt()}% 完成",
+                        text = "完成度 ${(progress * 100).toInt()}%",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF666666)
+                        color = TextTertiary
                     )
                 }
 
-                // 显示所有等级里程碑
-                if (levelTargets.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(15.dp))
-                    Text(
-                        text = "等级里程碑",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
+                nextMilestone?.let {
+                    Card(
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.10f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = "下一个里程碑",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = accent
+                            )
+                            Text(
+                                text = formatTarget(it, achievement.key),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = TextPrimary,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                }
 
-                    val allLevels = listOf(
-                        AchievementLevel.BRONZE,
-                        AchievementLevel.SILVER,
-                        AchievementLevel.GOLD,
-                        AchievementLevel.DIAMOND,
-                        AchievementLevel.LEGEND
-                    )
-
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        levelTargets.forEachIndexed { index, target ->
-                            val level = allLevels[index]
-                            val isCompleted = achievement.currentValue >= target
-                            val isCurrent = level == achievement.level && achievement.unlocked
-
+                if (milestones.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "里程碑",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = TextPrimary
+                        )
+                        milestones.forEach { target ->
+                            val reached = achievement.currentValue >= target
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    Text(
-                                        text = if (isCompleted) "✓" else "○",
-                                        color = if (isCompleted) Color(level.color) else Color(0xFFCCCCCC),
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = level.icon,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                    Text(
-                                        text = levelNames[index],
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isCompleted) Color(0xFF333333) else Color(0xFF999999)
-                                    )
-                                }
+                                Text(
+                                    text = if (reached) "已达成" else "待达成",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (reached) accent else TextTertiary
+                                )
                                 Text(
                                     text = formatTarget(target, achievement.key),
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (isCompleted) Color(0xFF333333) else Color(0xFF999999)
+                                    color = TextSecondary
                                 )
                             }
                         }
                     }
                 }
 
-                if (achievement.unlocked && achievement.unlockedDate != null) {
-                    Spacer(modifier = Modifier.height(15.dp))
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = levelColor.copy(alpha = 0.1f)
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(text = "🎉", style = MaterialTheme.typography.bodyMedium)
-                            Column {
-                                Text(
-                                    text = "当前等级已解锁",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = levelColor
-                                )
-                                Text(
-                                    text = formatDate(achievement.unlockedDate),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF999999)
-                                )
-                            }
-                        }
-                    }
+                achievement.unlockedDate?.let {
+                    Text(
+                        text = "解锁时间 ${formatDate(it)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextTertiary
+                    )
                 }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("关闭")
+                Text("关闭", color = Purple667)
             }
         }
-    )
-}
-
-private fun formatTarget(target: Int, key: String): String {
-    return when (key) {
-        "meditation_duration" -> "${target / 3600}小时"
-        "meditation_count" -> "${target}次"
-        "streak" -> "${target}天"
-        "affirmation_count" -> "${target}次"
-        else -> "$target"
-    }
-}
-
-private fun formatDate(timestamp: Long): String {
-    val cal = Calendar.getInstance()
-    cal.timeInMillis = timestamp
-    return String.format(
-        "%04d-%02d-%02d",
-        cal.get(Calendar.YEAR),
-        cal.get(Calendar.MONTH) + 1,
-        cal.get(Calendar.DAY_OF_MONTH)
     )
 }
 
@@ -769,111 +660,153 @@ private fun AchievementUnlockDialog(
     achievement: Achievement,
     onDismiss: () -> Unit
 ) {
-    val levelColor = Color(achievement.level.color)
-
-    // 获取解锁消息
-    val unlockMessage = when (achievement.key) {
-        "streak" -> "恭喜你达成连续打卡${achievement.targetValue}天!"
-        "meditation_count" -> "恭喜你完成冥想${achievement.targetValue}次!"
-        "meditation_duration" -> "恭喜你累计冥想${achievement.targetValue / 3600}小时!"
-        "affirmation_count" -> "恭喜你完成默念${achievement.targetValue}次!"
-        else -> "恭喜你解锁新成就!"
-    }
+    val accent = levelColor(achievement.level)
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color.White,
+        containerColor = SurfaceLight,
+        shape = RoundedCornerShape(28.dp),
         title = null,
         text = {
             Column(
+                modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 成就图标 - 带动画效果
                 Text(
                     text = achievement.icon,
-                    style = MaterialTheme.typography.displayLarge,
-                    fontSize = 80.sp,
-                    modifier = Modifier.padding(vertical = 15.dp)
+                    fontSize = 58.sp
                 )
-
-                // 成就解锁标题
                 Text(
-                    text = "🎉 成就解锁 🎉",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF333333)
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // 等级显示 - 金色渐变
-                Text(
-                    text = "${achievement.level.icon} ${achievement.level.displayName}",
+                    text = "成就解锁",
                     style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = levelColor,
-                    fontSize = 24.sp
+                    color = TextPrimary,
+                    fontWeight = FontWeight.SemiBold
                 )
-
-                Spacer(modifier = Modifier.height(15.dp))
-
-                // 成就名称
+                InfoPill(
+                    label = "${achievement.level.icon} ${achievement.level.displayName}",
+                    backgroundColor = accent.copy(alpha = 0.14f),
+                    contentColor = accent
+                )
                 Text(
                     text = achievement.name,
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF333333),
-                    fontSize = 20.sp
+                    color = TextPrimary,
+                    fontWeight = FontWeight.SemiBold
                 )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // 解锁描述
                 Text(
-                    text = unlockMessage,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color(0xFF666666),
-                    textAlign = TextAlign.Center,
-                    lineHeight = 24.sp
+                    text = unlockMessage(achievement),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center
                 )
             }
         },
         confirmButton = {
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent
-                ),
-                contentPadding = PaddingValues(0.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            brush = Brush.linearGradient(
-                                colors = listOf(
-                                    Color(0xFF667EEA),
-                                    Color(0xFF764BA2)
-                                )
-                            ),
-                            shape = RoundedCornerShape(12.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "太棒了!",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
-                        fontSize = 16.sp
-                    )
-                }
+            TextButton(onClick = onDismiss) {
+                Text("继续", color = Purple667)
             }
-        },
-        shape = RoundedCornerShape(20.dp)
+        }
     )
+}
+
+@Composable
+private fun rememberCurrentMonthLabel(): String {
+    val calendar = remember { Calendar.getInstance() }
+    return "${calendar.get(Calendar.MONTH) + 1} 月"
+}
+
+@Composable
+private fun rememberCalendarCells(): List<Int?> {
+    val calendar = remember { Calendar.getInstance() }
+    val daysInMonth = calendar.getActualMaximum(Calendar.DAY_OF_MONTH)
+    calendar.set(Calendar.DAY_OF_MONTH, 1)
+    val leadingEmptyDays = calendar.get(Calendar.DAY_OF_WEEK) - 1
+    return List(leadingEmptyDays) { null } + (1..daysInMonth).toList()
+}
+
+private fun achievementProgress(achievement: Achievement): Float {
+    return if (achievement.targetValue <= 0) {
+        0f
+    } else {
+        (achievement.currentValue.toFloat() / achievement.targetValue).coerceIn(0f, 1f)
+    }
+}
+
+private fun achievementProgressLabel(achievement: Achievement): String {
+    return when (achievement.key) {
+        "meditation_duration" -> {
+            val current = achievement.currentValue / 3600f
+            val target = achievement.targetValue / 3600f
+            String.format(Locale.getDefault(), "%.1f / %.0f 小时", current, target)
+        }
+
+        "streak" -> "${achievement.currentValue} / ${achievement.targetValue} 天"
+        else -> "${achievement.currentValue} / ${achievement.targetValue} 次"
+    }
+}
+
+private fun achievementRemainingLabel(achievement: Achievement): String? {
+    if (achievement.unlocked) return null
+
+    val remaining = (achievement.targetValue - achievement.currentValue).coerceAtLeast(0)
+    if (remaining == 0) return null
+
+    return when (achievement.key) {
+        "meditation_duration" -> {
+            String.format(Locale.getDefault(), "还差 %.1f 小时", remaining / 3600f)
+        }
+
+        "streak" -> "还差 $remaining 天"
+        else -> "还差 $remaining 次"
+    }
+}
+
+private fun achievementMilestones(key: String): List<Int> {
+    return when (key) {
+        "streak" -> listOf(7, 30, 100, 365, 1000)
+        "meditation_count" -> listOf(7, 30, 100, 365, 1000)
+        "meditation_duration" -> listOf(18_000, 72_000, 180_000, 360_000, 1_800_000)
+        "affirmation_count" -> listOf(20, 50, 200, 500, 1000)
+        else -> emptyList()
+    }
+}
+
+private fun formatTarget(target: Int, key: String): String {
+    return when (key) {
+        "meditation_duration" -> "${target / 3600} 小时"
+        "streak" -> "$target 天"
+        else -> "$target 次"
+    }
+}
+
+private fun formatDate(timestamp: Long): String {
+    val calendar = Calendar.getInstance().apply { timeInMillis = timestamp }
+    return String.format(
+        Locale.getDefault(),
+        "%04d-%02d-%02d",
+        calendar.get(Calendar.YEAR),
+        calendar.get(Calendar.MONTH) + 1,
+        calendar.get(Calendar.DAY_OF_MONTH)
+    )
+}
+
+private fun unlockMessage(achievement: Achievement): String {
+    return when (achievement.key) {
+        "streak" -> "你已经达成 ${achievement.targetValue} 天持续练习。"
+        "meditation_count" -> "你已经完成 ${achievement.targetValue} 次冥想练习。"
+        "meditation_duration" -> "你的冥想累计已达到 ${achievement.targetValue / 3600} 小时。"
+        "affirmation_count" -> "你已经完成 ${achievement.targetValue} 次默念。"
+        else -> "新的阶段已经被点亮。"
+    }
+}
+
+private fun levelColor(level: AchievementLevel): Color {
+    return when (level) {
+        AchievementLevel.BRONZE -> Color(level.color)
+        AchievementLevel.SILVER -> Color(level.color)
+        AchievementLevel.GOLD -> Color(level.color)
+        AchievementLevel.DIAMOND -> Color(level.color)
+        AchievementLevel.LEGEND -> Color(level.color)
+    }
 }

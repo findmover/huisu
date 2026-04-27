@@ -13,20 +13,34 @@ import javax.inject.Singleton
 @Singleton
 class TodoRepository @Inject constructor(
     private val todoCategoryDao: TodoCategoryDao,
-    private val todoItemDao: TodoItemDao
+    private val todoItemDao: TodoItemDao,
+    private val cloudSyncRepository: CloudSyncRepository
 ) {
     // 分类相关
     fun getAllCategories(): Flow<List<TodoCategory>> = todoCategoryDao.getAllCategories()
 
     suspend fun getCategoryById(id: Long): TodoCategory? = todoCategoryDao.getCategoryById(id)
 
-    suspend fun insertCategory(category: TodoCategory): Long = todoCategoryDao.insertCategory(category)
+    suspend fun insertCategory(category: TodoCategory): Long {
+        return todoCategoryDao.insertCategory(category).also {
+            cloudSyncRepository.requestAutoUpload()
+        }
+    }
 
-    suspend fun updateCategory(category: TodoCategory) = todoCategoryDao.updateCategory(category)
+    suspend fun updateCategory(category: TodoCategory) {
+        todoCategoryDao.updateCategory(category)
+        cloudSyncRepository.requestAutoUpload()
+    }
 
-    suspend fun deleteCategory(category: TodoCategory) = todoCategoryDao.deleteCategory(category)
+    suspend fun deleteCategory(category: TodoCategory) {
+        todoCategoryDao.deleteCategory(category)
+        cloudSyncRepository.requestAutoUpload()
+    }
 
-    suspend fun deleteCategoryById(id: Long) = todoCategoryDao.deleteCategoryById(id)
+    suspend fun deleteCategoryById(id: Long) {
+        todoCategoryDao.deleteCategoryById(id)
+        cloudSyncRepository.requestAutoUpload()
+    }
 
     suspend fun getCategoryCount(): Int = todoCategoryDao.getCategoryCount()
 
@@ -47,13 +61,26 @@ class TodoRepository @Inject constructor(
 
     suspend fun getTodoById(id: Long): TodoItem? = todoItemDao.getTodoById(id)
 
-    suspend fun insertTodo(todo: TodoItem): Long = todoItemDao.insertTodo(todo)
+    suspend fun insertTodo(todo: TodoItem): Long {
+        return todoItemDao.insertTodo(todo).also {
+            cloudSyncRepository.requestAutoUpload()
+        }
+    }
 
-    suspend fun updateTodo(todo: TodoItem) = todoItemDao.updateTodo(todo)
+    suspend fun updateTodo(todo: TodoItem) {
+        todoItemDao.updateTodo(todo)
+        cloudSyncRepository.requestAutoUpload()
+    }
 
-    suspend fun deleteTodo(todo: TodoItem) = todoItemDao.deleteTodo(todo)
+    suspend fun deleteTodo(todo: TodoItem) {
+        todoItemDao.deleteTodo(todo)
+        cloudSyncRepository.requestAutoUpload()
+    }
 
-    suspend fun deleteTodoById(id: Long) = todoItemDao.deleteTodoById(id)
+    suspend fun deleteTodoById(id: Long) {
+        todoItemDao.deleteTodoById(id)
+        cloudSyncRepository.requestAutoUpload()
+    }
 
     suspend fun updateTodoCompletionStatus(id: Long, completed: Boolean) {
         val completedAt = if (completed) System.currentTimeMillis() else null
@@ -63,6 +90,7 @@ class TodoRepository @Inject constructor(
             completedAt = completedAt,
             updatedAt = System.currentTimeMillis()
         )
+        cloudSyncRepository.requestAutoUpload()
     }
 
     suspend fun getTodoCount(): Int = todoItemDao.getTodoCount()

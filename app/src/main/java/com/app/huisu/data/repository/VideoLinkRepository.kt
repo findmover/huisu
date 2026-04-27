@@ -8,7 +8,8 @@ import javax.inject.Singleton
 
 @Singleton
 class VideoLinkRepository @Inject constructor(
-    private val videoLinkDao: VideoLinkDao
+    private val videoLinkDao: VideoLinkDao,
+    private val cloudSyncRepository: CloudSyncRepository
 ) {
 
     fun getAllVideoLinks(): Flow<List<VideoLink>> {
@@ -24,19 +25,24 @@ class VideoLinkRepository @Inject constructor(
     }
 
     suspend fun insertVideoLink(videoLink: VideoLink): Long {
-        return videoLinkDao.insert(videoLink)
+        return videoLinkDao.insert(videoLink).also {
+            cloudSyncRepository.requestAutoUpload()
+        }
     }
 
     suspend fun updateVideoLink(videoLink: VideoLink) {
         videoLinkDao.update(videoLink)
+        cloudSyncRepository.requestAutoUpload()
     }
 
     suspend fun deleteVideoLink(videoLink: VideoLink) {
         videoLinkDao.delete(videoLink)
+        cloudSyncRepository.requestAutoUpload()
     }
 
     suspend fun setDefaultVideoLink(videoLink: VideoLink) {
         videoLinkDao.setDefault(videoLink)
+        cloudSyncRepository.requestAutoUpload()
     }
 
     suspend fun initializeDefaultLinks() {

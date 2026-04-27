@@ -13,6 +13,7 @@ class AppPreferences(private val context: Context) {
 
     companion object {
         val AFFIRMATION_DURATION = intPreferencesKey("affirmation_duration")
+        val AFFIRMATIONS_INITIALIZED = booleanPreferencesKey("affirmations_initialized")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val MORNING_REMINDER_TIME = stringPreferencesKey("morning_reminder_time")
         val NOON_REMINDER_TIME = stringPreferencesKey("noon_reminder_time")
@@ -21,6 +22,9 @@ class AppPreferences(private val context: Context) {
 
     val affirmationDuration: Flow<Int> = context.dataStore.data
         .map { preferences -> preferences[AFFIRMATION_DURATION] ?: 180 } // 默认3分钟
+
+    val affirmationsInitialized: Flow<Boolean> = context.dataStore.data
+        .map { preferences -> preferences[AFFIRMATIONS_INITIALIZED] ?: false }
 
     val themeMode: Flow<String> = context.dataStore.data
         .map { preferences -> preferences[THEME_MODE] ?: "system" }
@@ -37,6 +41,12 @@ class AppPreferences(private val context: Context) {
     suspend fun setAffirmationDuration(duration: Int) {
         context.dataStore.edit { preferences ->
             preferences[AFFIRMATION_DURATION] = duration
+        }
+    }
+
+    suspend fun setAffirmationsInitialized(initialized: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AFFIRMATIONS_INITIALIZED] = initialized
         }
     }
 

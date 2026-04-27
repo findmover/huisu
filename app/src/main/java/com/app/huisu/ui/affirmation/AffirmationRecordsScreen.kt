@@ -31,7 +31,7 @@ fun AffirmationRecordsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("积极暗示记录") },
+                title = { Text("默念记录") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = stringResource(R.string.back))
@@ -51,7 +51,7 @@ fun AffirmationRecordsScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "还没有积极暗示记录",
+                    text = "还没有默念记录",
                     style = MaterialTheme.typography.bodyLarge,
                     color = Color(0xFF999999)
                 )
@@ -83,7 +83,7 @@ fun AffirmationRecordsScreen(
         AlertDialog(
             onDismissRequest = { recordToDelete = null },
             title = { Text("删除记录") },
-            text = { Text("确定要删除这条积极暗示记录吗？") },
+            text = { Text("确定要删除这条默念记录吗？") },
             confirmButton = {
                 TextButton(
                     onClick = {

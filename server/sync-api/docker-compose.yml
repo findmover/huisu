@@ -1,0 +1,14 @@
+services:
+  huisu-sync-api:
+    build: .
+    container_name: huisu-sync-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "18080:8080"
+    volumes:
+      - huisu_sync_data:/data
+
+volumes:
+  huisu_sync_data:

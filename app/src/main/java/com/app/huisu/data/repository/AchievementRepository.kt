@@ -11,7 +11,8 @@ import javax.inject.Singleton
 
 @Singleton
 class AchievementRepository @Inject constructor(
-    private val achievementDao: AchievementDao
+    private val achievementDao: AchievementDao,
+    private val cloudSyncRepository: CloudSyncRepository
 ) {
 
     fun getAllAchievements(): Flow<List<Achievement>> {
@@ -27,11 +28,14 @@ class AchievementRepository @Inject constructor(
     }
 
     suspend fun insertAchievement(achievement: Achievement): Long {
-        return achievementDao.insert(achievement)
+        return achievementDao.insert(achievement).also {
+            cloudSyncRepository.requestAutoUpload()
+        }
     }
 
     suspend fun updateAchievement(achievement: Achievement) {
         achievementDao.update(achievement)
+        cloudSyncRepository.requestAutoUpload()
     }
 
     suspend fun updateProgress(key: String, currentValue: Int) {
@@ -44,6 +48,7 @@ class AchievementRepository @Inject constructor(
                 unlockedDate = if (unlocked && !achievement.unlocked) System.currentTimeMillis() else achievement.unlockedDate
             )
             achievementDao.update(updated)
+            cloudSyncRepository.requestAutoUpload()
         }
     }
 
@@ -68,6 +73,7 @@ class AchievementRepository @Inject constructor(
                 achievementDao.insert(achievement)
             }
         }
+        cloudSyncRepository.requestAutoUpload()
     }
 
     // 更新成就进度，自动升级到下一等级
@@ -158,6 +164,7 @@ class AchievementRepository @Inject constructor(
                 }
             )
             achievementDao.update(updated)
+            cloudSyncRepository.requestAutoUpload()
         }
     }
 
@@ -173,5 +180,6 @@ class AchievementRepository @Inject constructor(
      */
     suspend fun markNotificationShown(achievementId: Long) {
         achievementDao.updateNotificationShown(achievementId, true)
+        cloudSyncRepository.requestAutoUpload()
     }
 }

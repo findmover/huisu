@@ -1,42 +1,85 @@
 package com.app.huisu.ui.todo
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material.icons.outlined.RadioButtonUnchecked
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.huisu.data.entity.TodoCategory
 import com.app.huisu.data.entity.TodoItem
 import com.app.huisu.data.entity.TodoPriority
+import com.app.huisu.ui.components.GlassCard
+import com.app.huisu.ui.components.InfoPill
 import com.app.huisu.ui.components.PrimaryButton
 import com.app.huisu.ui.components.SecondaryButton
+import com.app.huisu.ui.components.ZenBackground
+import com.app.huisu.ui.theme.DividerColor
+import com.app.huisu.ui.theme.ErrorRed
+import com.app.huisu.ui.theme.GlassWhite
+import com.app.huisu.ui.theme.Mist400
+import com.app.huisu.ui.theme.Purple667
+import com.app.huisu.ui.theme.Sage400
+import com.app.huisu.ui.theme.TextPrimary
+import com.app.huisu.ui.theme.TextSecondary
+import com.app.huisu.ui.theme.TextTertiary
+import com.app.huisu.ui.theme.WarningYellow
+import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoScreen(
     viewModel: TodoViewModel = hiltViewModel(),
@@ -44,101 +87,128 @@ fun TodoScreen(
     onNavigateToCategoryManagement: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showAddTodoDialog by remember { mutableStateOf(false) }
-    var showAddCategoryDialog by remember { mutableStateOf(false) }
-    var todoToEdit by remember { mutableStateOf<TodoItem?>(null) }
+    val categoryMap = remember(uiState.categories) { uiState.categories.associateBy { it.id } }
 
-    // 进入动画
+    var showAddTodoDialog by remember { mutableStateOf(false) }
+    var todoToEdit by remember { mutableStateOf<TodoItem?>(null) }
     var visible by remember { mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         visible = true
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
-            .padding(16.dp)
-            .padding(bottom = 80.dp) // 为底部导航栏预留空间
-    ) {
-        // 顶部操作栏 - 统一样式
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(animationSpec = tween(600)) + slideInVertically(
-                animationSpec = tween(600),
-                initialOffsetY = { -40 }
-            )
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                SecondaryButton(
-                    text = "+ 添加",
-                    onClick = { showAddTodoDialog = true },
-                    modifier = Modifier.weight(1f)
-                )
-                SecondaryButton(
-                    text = "⚙️ 分类",
-                    onClick = onNavigateToCategoryManagement,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+    uiState.error?.let { error ->
+        LaunchedEffect(error) {
+            delay(2400)
+            viewModel.clearError()
         }
+    }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // 分类筛选
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(animationSpec = tween(600, delayMillis = 100)) +
-                    slideInVertically(animationSpec = tween(600, delayMillis = 100))
+    ZenBackground {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 18.dp,
+                top = 18.dp,
+                end = 18.dp,
+                bottom = 96.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            CategoryFilter(
-                categories = uiState.categories,
-                selectedCategoryId = uiState.selectedCategoryId,
-                categoryStats = uiState.categoryStats,
-                onCategorySelected = viewModel::selectCategory
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // TODO列表
-        AnimatedVisibility(
-            visible = visible,
-            enter = fadeIn(animationSpec = tween(600, delayMillis = 200)) +
-                    slideInVertically(animationSpec = tween(600, delayMillis = 200)),
-            modifier = Modifier.weight(1f, fill = false) // 移到 AnimatedVisibility，使用 fill = false
-        ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                if (uiState.todos.isEmpty()) {
-                    EmptyTodoState(
-                        hasCategories = uiState.categories.isNotEmpty(),
-                        showCompletedOnly = uiState.showCompletedOnly,
-                        onToggleCompleted = viewModel::toggleShowCompleted
+            item {
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(animationSpec = tween(600)) + slideInVertically(
+                        animationSpec = tween(600),
+                        initialOffsetY = { -36 }
                     )
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
+                ) {
+                    TodoStatsHeader(
+                        overallStats = uiState.overallStats,
+                        showCompletedOnly = uiState.showCompletedOnly,
+                        onManageCategory = onNavigateToCategoryManagement
+                    )
+                }
+            }
+
+            item {
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(animationSpec = tween(650, delayMillis = 70))
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(uiState.todos) { todo ->
-                            TodoItemCard(
-                                todo = todo,
-                                onToggle = viewModel::toggleTodoCompletion,
-                                onEdit = { todoToEdit = todo },
-                                onDelete = viewModel::deleteTodo
+                        PrimaryButton(
+                            text = "新增任务",
+                            onClick = { showAddTodoDialog = true },
+                            modifier = Modifier.weight(1f)
+                        )
+                        SecondaryButton(
+                            text = if (uiState.showCompletedOnly) "查看全部" else "只看已完成",
+                            onClick = viewModel::toggleShowCompleted,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            item {
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(animationSpec = tween(700, delayMillis = 120))
+                ) {
+                    CategoryFilter(
+                        categories = uiState.categories,
+                        selectedCategoryId = uiState.selectedCategoryId,
+                        categoryStats = uiState.categoryStats,
+                        onCategorySelected = viewModel::selectCategory
+                    )
+                }
+            }
+
+            uiState.error?.let { error ->
+                item {
+                    AnimatedVisibility(
+                        visible = visible,
+                        enter = fadeIn(animationSpec = tween(720, delayMillis = 150))
+                    ) {
+                        MessageCard(
+                            message = error,
+                            accent = ErrorRed
+                        )
+                    }
+                }
+            }
+
+            if (visible) {
+                if (uiState.todos.isEmpty()) {
+                    item {
+                        GlassCard(modifier = Modifier.fillMaxWidth()) {
+                            EmptyTodoState(
+                                hasCategories = uiState.categories.isNotEmpty(),
+                                showCompletedOnly = uiState.showCompletedOnly,
+                                onToggleCompleted = viewModel::toggleShowCompleted
                             )
                         }
+                    }
+                } else {
+                    items(uiState.todos, key = { it.id }) { todo ->
+                        TodoItemCard(
+                            todo = todo,
+                            category = categoryMap[todo.categoryId],
+                            onToggle = viewModel::toggleTodoCompletion,
+                            onOpenDetail = onNavigateToDetail,
+                            onEdit = { todoToEdit = todo },
+                            onDelete = viewModel::deleteTodo
+                        )
                     }
                 }
             }
         }
-
     }
 
-    // 添加TODO对话框
     if (showAddTodoDialog) {
         AddTodoDialog(
             categories = uiState.categories,
@@ -150,24 +220,12 @@ fun TodoScreen(
         )
     }
 
-    // 添加分类对话框
-    if (showAddCategoryDialog) {
-        AddCategoryDialog(
-            onDismiss = { showAddCategoryDialog = false },
-            onConfirm = { name, color, icon ->
-                viewModel.addCategory(name, color, icon)
-                showAddCategoryDialog = false
-            }
-        )
-    }
-
-    // 编辑TODO对话框
     todoToEdit?.let { todo ->
         EditTodoDialog(
             todo = todo,
             categories = uiState.categories,
             onDismiss = { todoToEdit = null },
-            onConfirm = { id, title, description, categoryId, priority, dueDate ->
+            onConfirm = { _, title, description, categoryId, priority, dueDate ->
                 viewModel.updateTodo(
                     todo.copy(
                         title = title,
@@ -181,115 +239,97 @@ fun TodoScreen(
             }
         )
     }
-
-    // 错误提示
-    uiState.error?.let { error ->
-        LaunchedEffect(error) {
-            // 这里可以显示一个Toast或Snackbar
-            viewModel.clearError()
-        }
-    }
 }
 
 @Composable
 private fun TodoStatsHeader(
     overallStats: OverallStats,
-    onAddCategory: () -> Unit,
-    onManageCategory: () -> Unit = {}
+    showCompletedOnly: Boolean,
+    onManageCategory: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "📋 我的TODO",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF333333)
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = onManageCategory) {
-                        Text(
-                            text = "管理分类 >",
-                            fontSize = 14.sp,
-                            color = Color(0xFF667EEA)
-                        )
-                    }
+    GlassCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            FocusStatPill(
+                label = "待办",
+                value = overallStats.pendingTodos.toString(),
+                accent = Purple667,
+                modifier = Modifier.weight(1f)
+            )
+            FocusStatPill(
+                label = "完成",
+                value = overallStats.completedTodos.toString(),
+                accent = Sage400,
+                modifier = Modifier.weight(1f)
+            )
+            FocusStatPill(
+                label = "逾期",
+                value = overallStats.overdueCount.toString(),
+                accent = ErrorRed,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            InfoPill(
+                label = if (showCompletedOnly) {
+                    "当前筛选: 已完成"
+                } else {
+                    "完成率 ${overallStats.overallCompletionRate.toInt()}%"
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    title = "总计",
-                    value = overallStats.totalTodos.toString(),
-                    color = Color(0xFF667EEA),
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = "已完成",
-                    value = overallStats.completedTodos.toString(),
-                    color = Color(0xFF10B981),
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = "完成率",
-                    value = "${overallStats.overallCompletionRate.toInt()}%",
-                    color = Color(0xFFF59E0B),
-                    modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onManageCategory) {
+                Text(
+                    text = "分类管理",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Purple667
                 )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StatCard(
-    title: String,
+private fun FocusStatPill(
+    label: String,
     value: String,
-    color: Color,
+    accent: Color,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.12f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(horizontal = 12.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Text(
                 text = value,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = color
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary
             )
             Text(
-                text = title,
-                fontSize = 12.sp,
-                color = color.copy(alpha = 0.8f)
+                text = label,
+                style = MaterialTheme.typography.bodySmall,
+                color = accent
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CategoryFilter(
     categories: List<TodoCategory>,
@@ -297,35 +337,31 @@ private fun CategoryFilter(
     categoryStats: Map<Long, CategoryStats>,
     onCategorySelected: (Long?) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-                // 全部选项
-                CategoryChip(
-                    name = "全部",
-                    count = categoryStats.values.sumOf { it.total },
-                    isSelected = selectedCategoryId == null,
-                    color = Color(0xFF667EEA),
-                    onClick = { onCategorySelected(null) }
-                )
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        CategoryChip(
+            name = "全部",
+            count = categoryStats.values.sumOf { it.total },
+            isSelected = selectedCategoryId == null,
+            color = Purple667,
+            onClick = { onCategorySelected(null) }
+        )
 
-            categories.forEach { category ->
-                val stats = categoryStats[category.id] ?: CategoryStats()
-                CategoryChip(
-                    name = "${category.icon} ${category.name}",
-                    count = stats.total,
-                    isSelected = selectedCategoryId == category.id,
-                    color = Color(android.graphics.Color.parseColor(category.color)),
-                    onClick = { onCategorySelected(category.id) }
-                )
-            }
+        categories.forEach { category ->
+            val stats = categoryStats[category.id] ?: CategoryStats()
+            CategoryChip(
+                name = "${category.icon} ${category.name}",
+                count = stats.total,
+                isSelected = selectedCategoryId == category.id,
+                color = parseCategoryColor(category.color),
+                onClick = { onCategorySelected(category.id) }
+            )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CategoryChip(
     name: String,
@@ -335,31 +371,57 @@ private fun CategoryChip(
     onClick: () -> Unit
 ) {
     Card(
-        onClick = onClick,
+        modifier = Modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(999.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) color else Color(0xFFF5F5F5)
+            containerColor = if (isSelected) color.copy(alpha = 0.16f) else GlassWhite
         ),
-        shape = RoundedCornerShape(16.dp)
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (isSelected) color.copy(alpha = 0.28f) else DividerColor
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = name,
-                fontSize = 13.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) Color.White else color
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                color = if (isSelected) color else TextSecondary
             )
             if (count > 0) {
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = "($count)",
-                    fontSize = 12.sp,
-                    color = if (isSelected) Color.White.copy(alpha = 0.8f) else color.copy(alpha = 0.7f)
+                    text = count.toString(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isSelected) color else TextTertiary
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MessageCard(
+    message: String,
+    accent: Color
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.12f)),
+        border = BorderStroke(1.dp, accent.copy(alpha = 0.18f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextPrimary,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+        )
     }
 }
 
@@ -370,205 +432,282 @@ private fun EmptyTodoState(
     onToggleCompleted: () -> Unit
 ) {
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = if (showCompletedOnly) "📭" else if (hasCategories) "📝" else "🏷️",
-            fontSize = 64.sp,
-            modifier = Modifier.padding(bottom = 16.dp)
+            text = when {
+                showCompletedOnly -> "还没有已完成的任务"
+                hasCategories -> "今天的任务列表还是空的"
+                else -> "先建立一个分类，再开始整理任务"
+            },
+            style = MaterialTheme.typography.headlineMedium,
+            color = TextPrimary
         )
-
         Text(
             text = when {
-                showCompletedOnly -> "暂无已完成的TODO"
-                !hasCategories -> "还没有分类，先创建一个分类吧"
-                else -> "还没有TODO，添加一个开始吧"
+                showCompletedOnly -> "切回全部任务，看看还有哪些事情在等待推进。"
+                hasCategories -> "把最重要的一件事先写下来，执行会比计划更快开始。"
+                else -> "先有分类，再慢慢把事情放进合适的位置。"
             },
-            fontSize = 16.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(bottom = 16.dp)
+            style = MaterialTheme.typography.bodyMedium,
+            color = TextSecondary
         )
-
         if (showCompletedOnly) {
-            TextButton(onClick = onToggleCompleted) {
-                Text("查看全部TODO", color = Color(0xFF667EEA))
-            }
+            SecondaryButton(
+                text = "查看全部任务",
+                onClick = onToggleCompleted
+            )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TodoItemCard(
     todo: TodoItem,
+    category: TodoCategory?,
     onToggle: (Long, Boolean) -> Unit,
+    onOpenDetail: (Long) -> Unit,
     onEdit: () -> Unit,
     onDelete: (TodoItem) -> Unit
 ) {
-    var isVisible by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        isVisible = true
+    val priorityColor = priorityColor(todo.priority)
+    val categoryColor = category?.let { parseCategoryColor(it.color) } ?: Purple667
+    val completionLabel = todo.completedAt?.let {
+        "完成于 ${SimpleDateFormat("MM-dd", Locale.getDefault()).format(Date(it))}"
     }
 
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = fadeIn(animationSpec = tween(300)) + slideInVertically(
-            animationSpec = tween(300),
-            initialOffsetY = { 20 }
-        )
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = GlassWhite),
+        shape = RoundedCornerShape(26.dp),
+        border = BorderStroke(1.dp, DividerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(8.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-        ) {
-            Box {
-                Row(
+        Box {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = { onOpenDetail(todo.id) },
+                        onLongClick = { showMenu = true }
+                    )
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .combinedClickable(
-                            onClick = { onToggle(todo.id, todo.isCompleted) },
-                            onLongClick = { showMenu = true }
+                        .padding(top = 6.dp)
+                        .width(4.dp)
+                        .height(64.dp)
+                        .background(priorityColor, RoundedCornerShape(999.dp))
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(
+                            color = if (todo.isCompleted) {
+                                Sage400.copy(alpha = 0.20f)
+                            } else {
+                                priorityColor.copy(alpha = 0.12f)
+                            },
+                            shape = CircleShape
                         )
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        .clickable { onToggle(todo.id, todo.isCompleted) },
+                    contentAlignment = Alignment.Center
                 ) {
-                    // 完成状态图标
                     Icon(
-                        imageVector = if (todo.isCompleted) Icons.Default.Check else Icons.Default.Add,
+                        imageVector = if (todo.isCompleted) {
+                            Icons.Outlined.CheckCircle
+                        } else {
+                            Icons.Outlined.RadioButtonUnchecked
+                        },
                         contentDescription = if (todo.isCompleted) "已完成" else "未完成",
-                        tint = if (todo.isCompleted) Color(0xFF10B981) else Color.Gray,
-                        modifier = Modifier.size(20.dp)
+                        tint = if (todo.isCompleted) Sage400 else priorityColor
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        category?.let {
+                            InfoPill(
+                                label = "${it.icon} ${it.name}",
+                                backgroundColor = categoryColor.copy(alpha = 0.14f),
+                                contentColor = categoryColor
+                            )
+                        }
+                        completionLabel?.let {
+                            InfoPill(
+                                label = it,
+                                backgroundColor = Sage400.copy(alpha = 0.14f),
+                                contentColor = TextSecondary
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = todo.title,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (todo.isCompleted) TextSecondary else TextPrimary,
+                        textDecoration = if (todo.isCompleted) TextDecoration.LineThrough else null
                     )
 
-                    // 内容区域
-                    Column(modifier = Modifier.weight(1f)) {
-                        // 只显示description作为主要内容
+                    if (todo.description.isNotBlank() && todo.description != todo.title) {
                         Text(
-                            text = todo.description.ifEmpty { todo.title },
-                            fontSize = 14.sp,
-                            fontWeight = if (todo.isCompleted) FontWeight.Normal else FontWeight.SemiBold,
-                            color = if (todo.isCompleted) Color.Gray else Color(0xFF333333),
-                            textDecoration = if (todo.isCompleted) TextDecoration.LineThrough else null,
-                            maxLines = 2
+                            text = todo.description,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary,
+                            textDecoration = if (todo.isCompleted) TextDecoration.LineThrough else null
                         )
+                    }
 
-                        // 优先级和截止时间
-                        Row(
-                            modifier = Modifier.padding(top = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            PriorityBadge(priority = todo.priority)
-                            if (todo.dueDate != null) {
-                                DueDateBadge(dueDate = todo.dueDate)
-                            }
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PriorityBadge(priority = todo.priority)
+                        todo.dueDate?.let { DueDateBadge(dueDate = it, isCompleted = todo.isCompleted) }
+                        if (todo.dueDate == null && !todo.isCompleted) {
+                            InfoPill(
+                                label = "无截止时间",
+                                backgroundColor = Color.White.copy(alpha = 0.65f),
+                                contentColor = TextTertiary
+                            )
                         }
                     }
                 }
 
-                // 长按菜单
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false },
-                    offset = DpOffset(x = 0.dp, y = 0.dp)
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("编辑") },
-                        onClick = {
-                            showMenu = false
-                            onEdit()
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Edit,
-                                contentDescription = "编辑",
-                                tint = Color(0xFF667EEA)
-                            )
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("删除", color = Color(0xFFEF4444)) },
-                        onClick = {
-                            showMenu = false
-                            onDelete(todo)
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Delete,
-                                contentDescription = "删除",
-                                tint = Color(0xFFEF4444)
-                            )
-                        }
+                IconButton(onClick = { showMenu = true }) {
+                    Icon(
+                        imageVector = Icons.Outlined.MoreHoriz,
+                        contentDescription = "更多操作",
+                        tint = TextSecondary
                     )
                 }
+            }
+
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("编辑") },
+                    onClick = {
+                        showMenu = false
+                        onEdit()
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Edit,
+                            contentDescription = "编辑",
+                            tint = Purple667
+                        )
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("删除", color = ErrorRed) },
+                    onClick = {
+                        showMenu = false
+                        onDelete(todo)
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.DeleteOutline,
+                            contentDescription = "删除",
+                            tint = ErrorRed
+                        )
+                    }
+                )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PriorityBadge(priority: TodoPriority) {
-    val (text, color) = when (priority) {
-        TodoPriority.HIGH -> "高" to Color(0xFFEF4444)
-        TodoPriority.MEDIUM -> "中" to Color(0xFFF59E0B)
-        TodoPriority.LOW -> "低" to Color(0xFF10B981)
+    val (label, color) = when (priority) {
+        TodoPriority.HIGH -> "高优先级" to ErrorRed
+        TodoPriority.MEDIUM -> "中优先级" to WarningYellow
+        TodoPriority.LOW -> "低优先级" to Mist400
     }
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(4.dp)
-    ) {
-        Text(
-            text = text,
-            fontSize = 10.sp,
-            color = color,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-        )
-    }
+    InfoPill(
+        label = label,
+        backgroundColor = color.copy(alpha = 0.14f),
+        contentColor = TextPrimary
+    )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DueDateBadge(dueDate: Long) {
-    val now = System.currentTimeMillis()
-    val isOverdue = dueDate < now
-
-    Card(
-        colors = CardDefaults.cardColors(containerColor = if (isOverdue) Color(0xFFEF4444).copy(alpha = 0.1f) else Color(0xFF667EEA).copy(alpha = 0.1f)),
-        shape = RoundedCornerShape(4.dp)
-    ) {
-        Text(
-            text = "📅 ${formatDueDate(dueDate)}",
-            fontSize = 10.sp,
-            color = if (isOverdue) Color(0xFFEF4444) else Color(0xFF667EEA),
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-        )
+private fun DueDateBadge(
+    dueDate: Long,
+    isCompleted: Boolean
+) {
+    val isOverdue = !isCompleted && dueDate < System.currentTimeMillis()
+    val accent = when {
+        isOverdue -> ErrorRed
+        isCompleted -> Sage400
+        else -> Mist400
     }
+
+    InfoPill(
+        label = formatDueDate(dueDate),
+        backgroundColor = accent.copy(alpha = 0.16f),
+        contentColor = if (isOverdue) ErrorRed else TextSecondary
+    )
 }
 
 private fun formatDueDate(dueDate: Long): String {
-    val now = System.currentTimeMillis()
-    val diff = dueDate - now
-    val days = diff / (1000 * 60 * 60 * 24)
+    val today = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    val dueStart = Calendar.getInstance().apply {
+        timeInMillis = dueDate
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }.timeInMillis
+
+    val days = (dueStart - today) / (24 * 60 * 60 * 1000)
 
     return when {
-        days < 0 -> "已过期"
-        days == 0L -> "今天"
-        days == 1L -> "明天"
-        days <= 7L -> "${days}天后"
-        else -> {
-            val date = java.util.Date(dueDate)
-            val format = java.text.SimpleDateFormat("MM-dd", java.util.Locale.getDefault())
-            format.format(date)
-        }
+        days < 0 -> "已逾期"
+        days == 0L -> "今天截止"
+        days == 1L -> "明天截止"
+        days <= 7L -> "${days}天后截止"
+        else -> SimpleDateFormat("MM-dd 截止", Locale.getDefault()).format(Date(dueDate))
     }
+}
+
+private fun priorityColor(priority: TodoPriority): Color {
+    return when (priority) {
+        TodoPriority.HIGH -> ErrorRed
+        TodoPriority.MEDIUM -> WarningYellow
+        TodoPriority.LOW -> Purple667
+    }
+}
+
+private fun parseCategoryColor(color: String): Color {
+    return runCatching {
+        Color(android.graphics.Color.parseColor(color))
+    }.getOrDefault(Purple667)
 }

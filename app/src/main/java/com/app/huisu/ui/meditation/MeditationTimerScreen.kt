@@ -1,40 +1,59 @@
 package com.app.huisu.ui.meditation
 
-import androidx.compose.animation.core.*
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.app.huisu.R
+import com.app.huisu.ui.components.GlassCard
+import com.app.huisu.ui.components.InfoPill
+import com.app.huisu.ui.components.PrimaryButton
 import com.app.huisu.ui.components.SecondaryButton
+import com.app.huisu.ui.components.ZenBackground
+import com.app.huisu.ui.theme.Mist400
 import com.app.huisu.ui.theme.Purple667
-import kotlin.math.sin
-import kotlin.math.PI
-
-/**
- * 颜色线性插值辅助函数
- */
-private fun lerp(start: Color, end: Color, fraction: Float): Color {
-    return Color(
-        red = start.red + (end.red - start.red) * fraction,
-        green = start.green + (end.green - start.green) * fraction,
-        blue = start.blue + (end.blue - start.blue) * fraction,
-        alpha = start.alpha + (end.alpha - start.alpha) * fraction
-    )
-}
+import com.app.huisu.ui.theme.Sage400
+import com.app.huisu.ui.theme.TextPrimary
+import com.app.huisu.ui.theme.TextSecondary
+import com.app.huisu.ui.theme.TextTertiary
 
 @Composable
 fun MeditationTimerScreen(
@@ -42,229 +61,169 @@ fun MeditationTimerScreen(
     onBack: () -> Unit
 ) {
     val timerState by viewModel.timerState.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
+
     var showCancelDialog by remember { mutableStateOf(false) }
 
-    // 页面进入时确保已绑定到Service
     LaunchedEffect(Unit) {
-        // 确保绑定到Service获取实时状态
         viewModel.ensureServiceBound()
     }
 
-    // 监听生命周期 - 当用户返回App查看时间后,暂停让他点击"继续"再回B站
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, timerState.isRunning, timerState.isPaused) {
         val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> {
-                    // 如果计时正在运行(后台计时中),返回App时暂停
-                    // 让用户主动点击"继续冥想"后再返回B站
-                    if (timerState.isRunning && !timerState.isPaused) {
-                        viewModel.pauseMeditation()
-                    }
-                }
-                else -> {}
+            if (event == Lifecycle.Event.ON_RESUME && timerState.isRunning && !timerState.isPaused) {
+                viewModel.pauseMeditation()
             }
         }
 
         lifecycleOwner.lifecycle.addObserver(observer)
-
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 
-    // 动态梦幻渐变背景动画
-    val infiniteTransition = rememberInfiniteTransition(label = "gradient")
-
-    // 使用三个不同的动画来控制不同的颜色相位
-    val animatedProgress1 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(6000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "color1"
-    )
-
-    val animatedProgress2 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(8000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "color2"
-    )
-
-    val animatedProgress3 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(10000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "color3"
-    )
-
-    // 定义多个梦幻颜色
-    val colorPalette = listOf(
-        Color(0xFF667EEA), // 紫蓝
-        Color(0xFF764BA2), // 深紫
-        Color(0xFFFF6B9D), // 粉红
-        Color(0xFFC471ED), // 淡紫
-        Color(0xFF12C2E9), // 青蓝
-        Color(0xFFF093FB), // 粉紫
-        Color(0xFF4FACFE)  // 天蓝
-    )
-
-    // 使用正弦波计算颜色索引，创建流动效果
-    fun getInterpolatedColor(progress: Float, offset: Float): Color {
-        val index = (progress * 2 * PI.toFloat() + offset)
-        val sinValue = (sin(index.toDouble()) + 1) / 2 // 0到1之间
-        val colorIndex = (sinValue * (colorPalette.size - 1)).toInt()
-        val nextColorIndex = (colorIndex + 1) % colorPalette.size
-        val fraction = (sinValue * (colorPalette.size - 1)) - colorIndex
-
-        return lerp(colorPalette[colorIndex], colorPalette[nextColorIndex], fraction.toFloat())
-    }
-
-    val color1 = getInterpolatedColor(animatedProgress1, 0f)
-    val color2 = getInterpolatedColor(animatedProgress2, PI.toFloat() * 0.5f)
-    val color3 = getInterpolatedColor(animatedProgress3, PI.toFloat())
-
-    val animatedGradient = Brush.verticalGradient(
-        colors = listOf(color1, color2, color3),
-        startY = 0f,
-        endY = Float.POSITIVE_INFINITY
-    )
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(brush = animatedGradient)
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(40.dp))
-
-        Text(
-            text = if (timerState.isPaused) stringResource(R.string.meditation_paused)
-                   else stringResource(R.string.meditation_in_progress),
-            style = MaterialTheme.typography.headlineMedium,
-            color = Color.White
-        )
-
-        Spacer(modifier = Modifier.height(40.dp))
-
-        // 计时器显示
-        val hours = timerState.elapsedSeconds / 3600
-        val minutes = (timerState.elapsedSeconds % 3600) / 60
-        val seconds = timerState.elapsedSeconds % 60
-
-        Text(
-            text = String.format("%02d:%02d:%02d", hours, minutes, seconds),
-            fontSize = 64.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
-            color = Color.White
-        )
-
-        Spacer(modifier = Modifier.height(30.dp))
-
-        // 状态标签
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            color = Color.White.copy(alpha = 0.3f)
+    ZenBackground {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 18.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            GlassCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = if (timerState.isPaused) "冥想已暂停" else "冥想进行中",
+                            style = MaterialTheme.typography.displaySmall,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = if (timerState.isPaused) {
+                                "先把呼吸重新找回来，再继续这段安静的时间。"
+                            } else {
+                                "计时会继续留在这里，专注只需要慢慢沉下去。"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary
+                        )
+                    }
+
+                    InfoPill(
+                        label = if (timerState.isPaused) "已暂停" else "进行中",
+                        backgroundColor = if (timerState.isPaused) {
+                            Mist400.copy(alpha = 0.18f)
+                        } else {
+                            Sage400.copy(alpha = 0.18f)
+                        },
+                        contentColor = TextPrimary
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    InfoPill(
+                        label = shortLabel(uiState.currentVideoLink?.title ?: "未设置冥想视频"),
+                        backgroundColor = Color.White.copy(alpha = 0.72f),
+                        contentColor = TextSecondary
+                    )
+                    InfoPill(
+                        label = "已进行 ${formatElapsedTime(timerState.elapsedSeconds)}",
+                        backgroundColor = Mist400.copy(alpha = 0.16f),
+                        contentColor = TextSecondary
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = if (timerState.isPaused)
-                           "⏸️ ${stringResource(R.string.meditation_paused_hint)}"
-                           else "🎬 ${stringResource(R.string.meditation_video_playing_hint)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White
+                MeditationTimerOrb(
+                    elapsedSeconds = timerState.elapsedSeconds,
+                    isPaused = timerState.isPaused
                 )
             }
+
+            GlassCard {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    TimerMetaCard(
+                        title = "状态",
+                        value = if (timerState.isPaused) "暂停中" else "沉浸中",
+                        modifier = Modifier.weight(1f)
+                    )
+                    TimerMetaCard(
+                        title = "时长",
+                        value = formatElapsedTime(timerState.elapsedSeconds),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SecondaryButton(
+                        text = if (timerState.isPaused) "继续" else "暂停",
+                        onClick = {
+                            if (timerState.isPaused) {
+                                viewModel.resumeMeditation()
+                            } else {
+                                viewModel.pauseMeditation()
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    PrimaryButton(
+                        text = "完成",
+                        onClick = {
+                            viewModel.endMeditation()
+                            onBack()
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    SecondaryButton(
+                        text = "取消",
+                        onClick = { showCancelDialog = true },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        // 提示文字
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(bottom = 40.dp)
-        ) {
-            Text(
-                text = if (timerState.isPaused)
-                       stringResource(R.string.meditation_paused_tip)
-                       else stringResource(R.string.meditation_stay_focused),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.9f)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = if (timerState.isPaused)
-                       stringResource(R.string.meditation_click_continue_tip)
-                       else stringResource(R.string.meditation_video_playing),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.9f)
-            )
-        }
-
-        // 控制按钮 - 三个按钮横排
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // 继续/在看按钮
-            SecondaryButton(
-                text = if (timerState.isPaused) "▶️ ${stringResource(R.string.meditation_continue)}"
-                       else "👁️ ${stringResource(R.string.meditation_watching)}",
-                onClick = {
-                    if (timerState.isPaused) {
-                        viewModel.resumeMeditation()
-                    }
-                },
-                modifier = Modifier.weight(1f),
-                enabled = timerState.isPaused
-            )
-
-            // 完成按钮
-            SecondaryButton(
-                text = "✅ ${stringResource(R.string.meditation_finish)}",
-                onClick = {
-                    viewModel.endMeditation()
-                    onBack()
-                },
-                modifier = Modifier.weight(1f)
-            )
-
-            // 取消按钮
-            SecondaryButton(
-                text = "❌ ${stringResource(R.string.meditation_cancel)}",
-                onClick = {
-                    showCancelDialog = true
-                },
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
     }
 
-    // 取消确认对话框
     if (showCancelDialog) {
         AlertDialog(
             onDismissRequest = { showCancelDialog = false },
+            containerColor = Color.White,
+            shape = RoundedCornerShape(24.dp),
             title = {
-                Text(stringResource(R.string.meditation_cancel_title))
+                Text(
+                    text = "取消这次冥想？",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = TextPrimary
+                )
             },
             text = {
-                Text(stringResource(R.string.meditation_cancel_message))
+                Text(
+                    text = "取消后这次记录不会保存，你可以稍后重新开始。",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
             },
             confirmButton = {
                 TextButton(
@@ -274,19 +233,128 @@ fun MeditationTimerScreen(
                         onBack()
                     }
                 ) {
-                    Text(
-                        stringResource(R.string.confirm),
-                        color = Color.Red
-                    )
+                    Text("确认取消", color = Purple667)
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { showCancelDialog = false }
-                ) {
-                    Text(stringResource(R.string.cancel))
+                TextButton(onClick = { showCancelDialog = false }) {
+                    Text("继续冥想", color = TextSecondary)
                 }
             }
         )
     }
+}
+
+@Composable
+private fun MeditationTimerOrb(
+    elapsedSeconds: Int,
+    isPaused: Boolean
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "meditation_timer_orb")
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = if (isPaused) 3400 else 2600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "meditation_timer_pulse"
+    )
+
+    Box(contentAlignment = Alignment.Center) {
+        repeat(3) { index ->
+            Box(
+                modifier = Modifier
+                    .size((168 + index * 18).dp * pulse)
+                    .background(
+                        color = Purple667.copy(alpha = 0.07f - index * 0.015f),
+                        shape = CircleShape
+                    )
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .size(192.dp)
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color.White.copy(alpha = 0.98f),
+                            Sage400.copy(alpha = 0.82f),
+                            Mist400.copy(alpha = 0.68f)
+                        )
+                    ),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = formatElapsedTime(elapsedSeconds),
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily.Monospace,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "已静坐",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+                Text(
+                    text = if (isPaused) "暂停后也可以慢慢回来" else "让呼吸轻一点，节奏慢一点",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimerMetaCard(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.64f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                color = TextTertiary
+            )
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
+                color = TextPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+private fun formatElapsedTime(seconds: Int): String {
+    val hours = seconds / 3600
+    val minutes = (seconds % 3600) / 60
+    val secs = seconds % 60
+    return String.format("%02d:%02d:%02d", hours, minutes, secs)
+}
+
+private fun shortLabel(text: String, maxLength: Int = 12): String {
+    return if (text.length <= maxLength) text else text.take(maxLength) + "…"
 }

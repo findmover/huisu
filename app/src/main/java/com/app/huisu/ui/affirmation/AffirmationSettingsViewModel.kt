@@ -6,7 +6,12 @@ import com.app.huisu.data.entity.Affirmation
 import com.app.huisu.data.preferences.AppPreferences
 import com.app.huisu.data.repository.AffirmationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -34,7 +39,6 @@ class AffirmationSettingsViewModel @Inject constructor(
 
     private fun loadSettings() {
         viewModelScope.launch {
-            // 合并多个 Flow
             combine(
                 appPreferences.morningReminderTime,
                 appPreferences.noonReminderTime,
@@ -58,6 +62,7 @@ class AffirmationSettingsViewModel @Inject constructor(
             val maxOrder = _uiState.value.affirmations.maxOfOrNull { it.order } ?: -1
             val affirmation = Affirmation(
                 content = content,
+                isSelected = _uiState.value.affirmations.none { it.isSelected },
                 order = maxOrder + 1
             )
             affirmationRepository.insertAffirmation(affirmation)
@@ -154,11 +159,7 @@ class AffirmationSettingsViewModel @Inject constructor(
 
     fun selectAffirmation(affirmationId: Long) {
         viewModelScope.launch {
-            val affirmations = _uiState.value.affirmations
-            affirmations.forEach { affirmation ->
-                val updated = affirmation.copy(isSelected = affirmation.id == affirmationId)
-                affirmationRepository.updateAffirmation(updated)
-            }
+            affirmationRepository.selectAffirmation(affirmationId)
         }
     }
 }
@@ -178,7 +179,7 @@ data class TimeSettings(
     val morningTime: String = "08:00",
     val noonTime: String = "12:30",
     val eveningTime: String = "20:00",
-    val duration: Int = 180 // 秒
+    val duration: Int = 180
 )
 
 enum class TimeType {

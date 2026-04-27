@@ -2,8 +2,22 @@ package com.app.huisu.data.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
-import com.app.huisu.data.dao.*
-import com.app.huisu.data.entity.*
+import com.app.huisu.data.dao.AchievementDao
+import com.app.huisu.data.dao.AffirmationDao
+import com.app.huisu.data.dao.AffirmationRecordDao
+import com.app.huisu.data.dao.MeditationDao
+import com.app.huisu.data.dao.QuickNoteDao
+import com.app.huisu.data.dao.TodoCategoryDao
+import com.app.huisu.data.dao.TodoItemDao
+import com.app.huisu.data.dao.VideoLinkDao
+import com.app.huisu.data.entity.Achievement
+import com.app.huisu.data.entity.Affirmation
+import com.app.huisu.data.entity.AffirmationRecord
+import com.app.huisu.data.entity.MeditationRecord
+import com.app.huisu.data.entity.QuickNote
+import com.app.huisu.data.entity.TodoCategory
+import com.app.huisu.data.entity.TodoItem
+import com.app.huisu.data.entity.VideoLink
 
 @Database(
     entities = [
@@ -13,12 +27,12 @@ import com.app.huisu.data.entity.*
         VideoLink::class,
         Achievement::class,
         TodoCategory::class,
-        TodoItem::class
+        TodoItem::class,
+        QuickNote::class
     ],
-    version = 7,  // 升级到版本6，添���TODO功能
+    version = 8,
     exportSchema = false
 )
-// @TypeConverters(Converters::class)  // 移除 - 不再需要类型转换器
 abstract class AppDatabase : RoomDatabase() {
     abstract fun meditationDao(): MeditationDao
     abstract fun affirmationRecordDao(): AffirmationRecordDao
@@ -27,4 +41,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun achievementDao(): AchievementDao
     abstract fun todoCategoryDao(): TodoCategoryDao
     abstract fun todoItemDao(): TodoItemDao
+    abstract fun quickNoteDao(): QuickNoteDao
 }

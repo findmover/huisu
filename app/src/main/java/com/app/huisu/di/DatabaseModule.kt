@@ -72,6 +72,12 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideQuickNoteDao(database: AppDatabase): QuickNoteDao {
+        return database.quickNoteDao()
+    }
+
+    @Provides
+    @Singleton
     fun provideAppPreferences(@ApplicationContext context: Context): AppPreferences {
         return AppPreferences(context)
     }

@@ -41,7 +41,7 @@ fun AffirmationManagementScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "暗示语管理",
+                        text = "默念文案管理",
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -97,14 +97,14 @@ fun AffirmationManagementScreen(
                                 modifier = Modifier.padding(bottom = 16.dp)
                             )
                             Text(
-                                text = "暂无暗示语",
+                                text = "暂无默念文案",
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF666666)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "点击下方按钮添加您的第一条暗示语",
+                                text = "点击下方按钮添加您的第一条默念文案",
                                 fontSize = 14.sp,
                                 color = Color(0xFF999999)
                             )
@@ -141,7 +141,7 @@ fun AffirmationManagementScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(
-                        text = "➕ 添加暗示语",
+                        text = "➕ 添加默念文案",
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
