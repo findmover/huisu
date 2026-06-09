@@ -7,6 +7,7 @@ import com.app.huisu.data.dao.AffirmationDao
 import com.app.huisu.data.dao.AffirmationRecordDao
 import com.app.huisu.data.dao.MeditationDao
 import com.app.huisu.data.dao.QuickNoteDao
+import com.app.huisu.data.dao.QuickNoteImageDao
 import com.app.huisu.data.dao.TodoCategoryDao
 import com.app.huisu.data.dao.TodoItemDao
 import com.app.huisu.data.dao.VideoLinkDao
@@ -15,6 +16,7 @@ import com.app.huisu.data.entity.Affirmation
 import com.app.huisu.data.entity.AffirmationRecord
 import com.app.huisu.data.entity.MeditationRecord
 import com.app.huisu.data.entity.QuickNote
+import com.app.huisu.data.entity.QuickNoteImage
 import com.app.huisu.data.entity.TodoCategory
 import com.app.huisu.data.entity.TodoItem
 import com.app.huisu.data.entity.VideoLink
@@ -28,9 +30,10 @@ import com.app.huisu.data.entity.VideoLink
         Achievement::class,
         TodoCategory::class,
         TodoItem::class,
-        QuickNote::class
+        QuickNote::class,
+        QuickNoteImage::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -42,4 +45,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun todoCategoryDao(): TodoCategoryDao
     abstract fun todoItemDao(): TodoItemDao
     abstract fun quickNoteDao(): QuickNoteDao
+    abstract fun quickNoteImageDao(): QuickNoteImageDao
 }

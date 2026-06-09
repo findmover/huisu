@@ -7,6 +7,7 @@ import com.app.huisu.data.cloud.CloudSyncTimestamps
 import com.app.huisu.data.cloud.DatabaseSnapshotStore
 import com.app.huisu.data.cloud.SyncApiClient
 import com.app.huisu.data.cloud.SyncConflictException
+import com.app.huisu.data.cloud.SyncMergeHistoryResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -137,6 +138,43 @@ class CloudSyncRepository @Inject constructor(
         CloudSyncResult(message = "已合并云端版本 ${response.revision} 到本地", timestamp = now)
     }
 
+    suspend fun previewMergeHistory(limit: Int = DEFAULT_MERGE_HISTORY_LIMIT): CloudSyncResult = syncMutex.withLock {
+        val config = preferences.loadConfig()
+        require(config.isComplete()) { "请先填写完整云同步配置" }
+
+        val response = syncApiClient.mergeHistory(
+            config = config,
+            limit = limit,
+            dryRun = true
+        )
+        CloudSyncResult(message = "预览合并历史：${formatMergeCounts(response)}，确认后可执行合并去重")
+    }
+
+    suspend fun mergeHistory(limit: Int = DEFAULT_MERGE_HISTORY_LIMIT): CloudSyncResult = syncMutex.withLock {
+        val config = preferences.loadConfig()
+        require(config.isComplete()) { "请先填写完整云同步配置" }
+
+        val response = syncApiClient.mergeHistory(
+            config = config,
+            limit = limit,
+            dryRun = false
+        )
+        val cloud = syncApiClient.getSnapshot(config)
+        if (cloud.exists && cloud.snapshot != null) {
+            importCloudSnapshot(config, cloud.snapshot)
+            val now = System.currentTimeMillis()
+            preferences.setLastDownloadAt(now)
+            preferences.setLastRevision(cloud.revision)
+            return CloudSyncResult(
+                message = "已合并历史并拉取到本地，云端版本 ${cloud.revision}：${formatMergeCounts(response)}",
+                timestamp = now
+            )
+        }
+
+        preferences.setLastRevision(response.revision)
+        CloudSyncResult(message = "已合并历史，云端版本 ${response.revision}：${formatMergeCounts(response)}")
+    }
+
     private suspend fun uploadWithConflictMergeLocked(config: CloudSyncConfig): Long {
         return try {
             uploadCurrentSnapshotLocked(config, force = false)
@@ -180,7 +218,16 @@ class CloudSyncRepository @Inject constructor(
         snapshotStore.importSnapshot(JSONObject(rawSnapshot))
     }
 
+    private fun formatMergeCounts(response: SyncMergeHistoryResponse): String {
+        val counts = response.mergedTableCounts
+        val noteCount = counts["quick_notes"] ?: 0
+        val imageCount = counts["quick_note_images"] ?: 0
+        val todoCount = counts["todo_items"] ?: 0
+        return "速记 $noteCount 条，图片 $imageCount 张，待办 $todoCount 条"
+    }
+
     companion object {
         private const val AUTO_UPLOAD_DEBOUNCE_MS = 1_500L
+        private const val DEFAULT_MERGE_HISTORY_LIMIT = 30
     }
 }

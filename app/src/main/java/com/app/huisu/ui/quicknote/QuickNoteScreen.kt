@@ -1,6 +1,10 @@
 package com.app.huisu.ui.quicknote
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +29,10 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,7 +56,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -56,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.app.huisu.data.entity.QuickNote
+import com.app.huisu.data.entity.QuickNoteImage
 import com.app.huisu.data.entity.QuickNoteSpace
 import com.app.huisu.data.entity.QuickNoteType
 import com.app.huisu.data.entity.generateQuickNoteTitle
@@ -77,11 +90,16 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun QuickNoteScreen(
     viewModel: QuickNoteViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = uiState.isRefreshing,
+        onRefresh = viewModel::refreshFromCloud
+    )
 
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
     var viewingNote by remember { mutableStateOf<QuickNote?>(null) }
@@ -96,7 +114,11 @@ fun QuickNoteScreen(
     }
 
     ZenBackground {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
+        ) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
@@ -150,8 +172,10 @@ fun QuickNoteScreen(
                     }
                 } else {
                     items(uiState.notes, key = { it.id }) { note ->
+                        val noteImages = uiState.imagesByNoteId[note.id].orEmpty()
                         QuickNoteCard(
                             note = note,
+                            images = noteImages,
                             onOpen = { viewingNote = note },
                             onEdit = { editingNote = note },
                             onToggleFavorite = { viewModel.toggleFavorite(note.id) },
@@ -167,6 +191,13 @@ fun QuickNoteScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(end = 20.dp, bottom = 20.dp)
+            )
+
+            PullRefreshIndicator(
+                refreshing = uiState.isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                contentColor = Purple667
             )
         }
     }
@@ -192,6 +223,7 @@ fun QuickNoteScreen(
     viewingNote?.let { note ->
         QuickNoteDetailDialog(
             note = note,
+            images = uiState.imagesByNoteId[note.id].orEmpty(),
             onDismiss = { viewingNote = null }
         )
     }
@@ -409,6 +441,7 @@ private fun EmptyQuickNoteState(
 @Composable
 private fun QuickNoteCard(
     note: QuickNote,
+    images: List<QuickNoteImage>,
     onOpen: () -> Unit,
     onEdit: () -> Unit,
     onToggleFavorite: () -> Unit,
@@ -446,6 +479,13 @@ private fun QuickNoteCard(
                         backgroundColor = Purple667.copy(alpha = 0.12f),
                         contentColor = Purple667
                     )
+                    if (images.isNotEmpty()) {
+                        InfoPill(
+                            label = "图片 ${images.size}",
+                            backgroundColor = Color.White.copy(alpha = 0.75f),
+                            contentColor = TextSecondary
+                        )
+                    }
                 }
 
                 Box {
@@ -521,6 +561,10 @@ private fun QuickNoteCard(
                 overflow = TextOverflow.Ellipsis
             )
 
+            if (images.isNotEmpty()) {
+                QuickNoteImageStrip(images = images, large = false)
+            }
+
             if (note.tagList().isNotEmpty()) {
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -548,6 +592,7 @@ private fun QuickNoteCard(
 @Composable
 private fun QuickNoteDetailDialog(
     note: QuickNote,
+    images: List<QuickNoteImage>,
     onDismiss: () -> Unit
 ) {
     AlertDialog(
@@ -574,6 +619,9 @@ private fun QuickNoteDetailDialog(
                     style = MaterialTheme.typography.bodyLarge,
                     color = TextPrimary
                 )
+                if (images.isNotEmpty()) {
+                    QuickNoteImageStrip(images = images, large = true)
+                }
                 if (note.tagList().isNotEmpty()) {
                     Row(
                         modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -601,6 +649,57 @@ private fun QuickNoteDetailDialog(
             }
         }
     )
+}
+
+@Composable
+private fun QuickNoteImageStrip(
+    images: List<QuickNoteImage>,
+    large: Boolean
+) {
+    val imageSize = if (large) 132.dp else 76.dp
+
+    Row(
+        modifier = Modifier.horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        images.forEach { image ->
+            val bitmap = rememberQuickNoteBitmap(image.dataBase64)
+            if (bitmap != null) {
+                Image(
+                    bitmap = bitmap,
+                    contentDescription = image.fileName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(imageSize)
+                        .clip(RoundedCornerShape(14.dp))
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(imageSize)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(DividerColor.copy(alpha = 0.45f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "图片",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = TextSecondary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberQuickNoteBitmap(dataBase64: String): ImageBitmap? {
+    return remember(dataBase64) {
+        runCatching {
+            val bytes = Base64.decode(dataBase64, Base64.DEFAULT)
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+        }.getOrNull()
+    }
 }
 
 @Composable

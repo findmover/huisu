@@ -3,6 +3,7 @@ package com.app.huisu.ui.quicknote
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.huisu.data.entity.QuickNote
+import com.app.huisu.data.entity.QuickNoteImage
 import com.app.huisu.data.entity.QuickNoteSpace
 import com.app.huisu.data.entity.QuickNoteStatus
 import com.app.huisu.data.entity.QuickNoteType
@@ -10,6 +11,7 @@ import com.app.huisu.data.entity.generateQuickNoteTitle
 import com.app.huisu.data.entity.tagList
 import com.app.huisu.data.repository.QuickNoteRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -20,9 +22,11 @@ import javax.inject.Inject
 
 data class QuickNoteUiState(
     val notes: List<QuickNote> = emptyList(),
+    val imagesByNoteId: Map<Long, List<QuickNoteImage>> = emptyMap(),
     val popularTags: List<QuickNoteTagCount> = emptyList(),
     val query: String = "",
     val selectedSpace: QuickNoteSpaceFilter = QuickNoteSpaceFilter.ALL,
+    val isRefreshing: Boolean = false,
     val error: String? = null
 )
 
@@ -46,23 +50,27 @@ class QuickNoteViewModel @Inject constructor(
     private val query = MutableStateFlow("")
     private val selectedSpace = MutableStateFlow(QuickNoteSpaceFilter.ALL)
     private val error = MutableStateFlow<String?>(null)
+    private val isRefreshing = MutableStateFlow(false)
 
     private val filters = combine(
         query,
         selectedSpace,
-        error
-    ) { queryText, spaceFilter, errorMessage ->
+        error,
+        isRefreshing
+    ) { queryText, spaceFilter, errorMessage, refreshing ->
         QuickNoteFilters(
             query = queryText,
             selectedSpace = spaceFilter,
-            error = errorMessage
+            error = errorMessage,
+            isRefreshing = refreshing
         )
     }
 
     val uiState: StateFlow<QuickNoteUiState> = combine(
         quickNoteRepository.getAllNotes(),
+        quickNoteRepository.getAllImages(),
         filters
-    ) { notes, filters ->
+    ) { notes, images, filters ->
         val visibleNotes = notes
             .asSequence()
             .filter { it.status != QuickNoteStatus.DELETED }
@@ -73,12 +81,17 @@ class QuickNoteViewModel @Inject constructor(
                     .thenByDescending { it.updatedAt }
             )
             .toList()
+        val visibleNoteIds = visibleNotes.map { it.id }.toSet()
 
         QuickNoteUiState(
             notes = visibleNotes,
+            imagesByNoteId = images
+                .filter { it.noteId in visibleNoteIds }
+                .groupBy { it.noteId },
             popularTags = buildPopularTags(notes),
             query = filters.query,
             selectedSpace = filters.selectedSpace,
+            isRefreshing = filters.isRefreshing,
             error = filters.error
         )
     }.stateIn(
@@ -102,6 +115,21 @@ class QuickNoteViewModel @Inject constructor(
     fun clearFilters() {
         query.value = ""
         selectedSpace.value = QuickNoteSpaceFilter.ALL
+    }
+
+    fun refreshFromCloud() {
+        viewModelScope.launch {
+            if (isRefreshing.value) return@launch
+            isRefreshing.value = true
+            val startedAt = System.currentTimeMillis()
+            val result = runCatching { quickNoteRepository.refreshFromCloud() }
+            val remainingDelay = 700L - (System.currentTimeMillis() - startedAt)
+            if (remainingDelay > 0) {
+                delay(remainingDelay)
+            }
+            result.onFailure { error.value = "刷新云端数据失败：${it.message}" }
+            isRefreshing.value = false
+        }
     }
 
     fun addNote(
@@ -136,7 +164,7 @@ class QuickNoteViewModel @Inject constructor(
                     )
                 )
             } catch (exception: Exception) {
-                error.value = "保存记录失败: ${exception.message}"
+                error.value = "保存记录失败：${exception.message}"
             }
         }
     }
@@ -173,7 +201,7 @@ class QuickNoteViewModel @Inject constructor(
                     )
                 )
             } catch (exception: Exception) {
-                error.value = "更新记录失败: ${exception.message}"
+                error.value = "更新记录失败：${exception.message}"
             }
         }
     }
@@ -181,21 +209,21 @@ class QuickNoteViewModel @Inject constructor(
     fun toggleFavorite(noteId: Long) {
         viewModelScope.launch {
             runCatching { quickNoteRepository.toggleFavorite(noteId) }
-                .onFailure { error.value = "更新收藏状态失败: ${it.message}" }
+                .onFailure { error.value = "更新收藏状态失败：${it.message}" }
         }
     }
 
     fun togglePinned(noteId: Long) {
         viewModelScope.launch {
             runCatching { quickNoteRepository.togglePinned(noteId) }
-                .onFailure { error.value = "更新置顶状态失败: ${it.message}" }
+                .onFailure { error.value = "更新置顶状态失败：${it.message}" }
         }
     }
 
     fun delete(noteId: Long) {
         viewModelScope.launch {
             runCatching { quickNoteRepository.softDelete(noteId) }
-                .onFailure { error.value = "删除失败: ${it.message}" }
+                .onFailure { error.value = "删除失败：${it.message}" }
         }
     }
 
@@ -206,7 +234,8 @@ class QuickNoteViewModel @Inject constructor(
     private data class QuickNoteFilters(
         val query: String,
         val selectedSpace: QuickNoteSpaceFilter,
-        val error: String?
+        val error: String?,
+        val isRefreshing: Boolean
     )
 
     companion object {
@@ -259,6 +288,5 @@ class QuickNoteViewModel @Inject constructor(
                 .distinct()
                 .joinToString(", ")
         }
-
     }
 }

@@ -74,9 +74,11 @@ docker compose up -d --build
 ```env
 SYNC_API_TOKEN=lee123456
 SYNC_DB_PATH=/data/sync.db
-SYNC_MAX_BODY_BYTES=10485760
+SYNC_MAX_BODY_BYTES=52428800
 SYNC_HISTORY_LIMIT=30
 ```
+
+如果同步速记图片，图片会随 `quick_note_images` 表以 base64 放入快照，建议保持 `SYNC_MAX_BODY_BYTES` 不低于 50MB。
 
 2. 测试：
 
@@ -102,3 +104,37 @@ curl -X POST http://服务器IP:18080/v1/sync/probe \
 2. 本地关键操作后导出 Room 快照，调用 `PUT /v1/sync/snapshot`。
 3. 如果返回 `409`，先拉云端快照并合并到本地，再重新上传。
 4. 本地保存最近一次成功同步的 `revision`。
+
+## 历史版本恢复接口
+
+如果某台设备误上传了较少的数据，可以先停止继续保存，然后查看历史版本：
+
+```bash
+curl http://服务器IP:18080/v1/sync/history \
+  -H "Authorization: Bearer 你的TOKEN"
+```
+
+确认要恢复的版本后执行：
+
+```bash
+curl -X POST "http://服务器IP:18080/v1/sync/restore/版本号?device_id=manual-recover" \
+  -H "Authorization: Bearer 你的TOKEN"
+```
+
+恢复会生成一个新的当前版本，并把恢复前的当前版本也保留到历史表。
+
+如果不想手动选择某个旧版本，可以合并最近历史版本并去重：
+
+```bash
+curl -X POST "http://服务器IP:18080/v1/sync/merge-history?limit=30&dry_run=true" \
+  -H "Authorization: Bearer 你的TOKEN"
+```
+
+确认 `merged_table_counts` 正常后正式合并：
+
+```bash
+curl -X POST "http://服务器IP:18080/v1/sync/merge-history?limit=30&device_id=manual-merge" \
+  -H "Authorization: Bearer 你的TOKEN"
+```
+
+合并会生成一个新的当前版本；同一张表同一个 `id` 保留 `updatedAt` 最新的行，并去掉完全重复的行。

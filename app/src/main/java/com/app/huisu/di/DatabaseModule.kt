@@ -2,6 +2,8 @@ package com.app.huisu.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.app.huisu.data.dao.*
 import com.app.huisu.data.database.AppDatabase
 import com.app.huisu.data.preferences.AppPreferences
@@ -16,6 +18,26 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private val MIGRATION_8_9 = object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS `quick_note_images` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                    `noteId` INTEGER NOT NULL,
+                    `fileName` TEXT NOT NULL,
+                    `mimeType` TEXT NOT NULL,
+                    `dataBase64` TEXT NOT NULL,
+                    `sizeBytes` INTEGER NOT NULL,
+                    `status` TEXT NOT NULL,
+                    `createdAt` INTEGER NOT NULL,
+                    `updatedAt` INTEGER NOT NULL
+                )
+                """.trimIndent()
+            )
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -24,7 +46,8 @@ object DatabaseModule {
             AppDatabase::class.java,
             "huisu_database"
         )
-            .fallbackToDestructiveMigration() // 简单的迁移策略：删除并重建
+            .addMigrations(MIGRATION_8_9)
+            .fallbackToDestructiveMigrationOnDowngrade()
             .build()
     }
 
@@ -74,6 +97,12 @@ object DatabaseModule {
     @Singleton
     fun provideQuickNoteDao(database: AppDatabase): QuickNoteDao {
         return database.quickNoteDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideQuickNoteImageDao(database: AppDatabase): QuickNoteImageDao {
+        return database.quickNoteImageDao()
     }
 
     @Provides

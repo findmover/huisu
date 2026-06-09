@@ -6,6 +6,7 @@ import org.json.JSONObject
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -18,6 +19,13 @@ data class SyncSnapshotResponse(
 data class SyncUploadResponse(
     val revision: Long,
     val updatedAt: String
+)
+
+data class SyncMergeHistoryResponse(
+    val merged: Boolean,
+    val dryRun: Boolean,
+    val revision: Long,
+    val mergedTableCounts: Map<String, Int>
 )
 
 class SyncConflictException(message: String) : IllegalStateException(message)
@@ -80,6 +88,30 @@ class SyncApiClient @Inject constructor() {
         )
     }
 
+    suspend fun mergeHistory(
+        config: CloudSyncConfig,
+        limit: Int = 30,
+        dryRun: Boolean = false
+    ): SyncMergeHistoryResponse = withContext(Dispatchers.IO) {
+        val deviceId = URLEncoder.encode(config.deviceId, Charsets.UTF_8.name())
+        val path = "/v1/sync/merge-history?limit=$limit&dry_run=$dryRun&device_id=$deviceId"
+        val response = JSONObject(
+            execute(
+                method = "POST",
+                url = buildUrl(config, path),
+                config = config,
+                body = "",
+                requiresAuth = true
+            )
+        )
+        SyncMergeHistoryResponse(
+            merged = response.optBoolean("merged", false),
+            dryRun = response.optBoolean("dry_run", false),
+            revision = response.optLong("revision", 0L),
+            mergedTableCounts = response.optJSONObject("merged_table_counts").toIntMap()
+        )
+    }
+
     private fun execute(
         method: String,
         url: URL,
@@ -132,5 +164,10 @@ class SyncApiClient @Inject constructor() {
 
     private fun buildUrl(config: CloudSyncConfig, path: String): URL {
         return URL("${config.serverUrl.trim().trimEnd('/')}$path")
+    }
+
+    private fun JSONObject?.toIntMap(): Map<String, Int> {
+        if (this == null) return emptyMap()
+        return keys().asSequence().associateWith { key -> optInt(key, 0) }
     }
 }

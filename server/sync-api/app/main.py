@@ -5,6 +5,7 @@ import json
 import os
 import secrets
 import sqlite3
+import copy
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,10 +18,27 @@ from pydantic import BaseModel, Field
 
 DB_PATH = Path(os.getenv("SYNC_DB_PATH", "/data/sync.db"))
 API_TOKEN = os.getenv("SYNC_API_TOKEN", "lee123456")
-MAX_BODY_BYTES = int(os.getenv("SYNC_MAX_BODY_BYTES", str(10 * 1024 * 1024)))
+MAX_BODY_BYTES = int(os.getenv("SYNC_MAX_BODY_BYTES", str(50 * 1024 * 1024)))
 HISTORY_LIMIT = int(os.getenv("SYNC_HISTORY_LIMIT", "30"))
 
 SNAPSHOT_ID = "default"
+SYNC_TABLES = [
+    "meditation_records",
+    "affirmation_records",
+    "affirmations",
+    "video_links",
+    "achievements",
+    "todo_categories",
+    "todo_items",
+    "quick_notes",
+    "quick_note_images",
+]
+UPDATED_AT_TABLES = {
+    "todo_categories",
+    "todo_items",
+    "quick_notes",
+    "quick_note_images",
+}
 
 app = FastAPI(
     title="HuiSu Sync API",
@@ -157,6 +175,129 @@ def snapshot_response(row: Optional[sqlite3.Row]) -> Dict[str, Any]:
     }
 
 
+def history_meta(row: sqlite3.Row) -> Dict[str, Any]:
+    snapshot_json = row["snapshot_json"]
+    return {
+        "revision": row["revision"],
+        "updated_at": row["updated_at"],
+        "updated_by": row["updated_by"],
+        "client_updated_at": row["client_updated_at"],
+        "content_sha256": row["content_sha256"],
+        "stored_bytes": len(snapshot_json.encode("utf-8")),
+    }
+
+
+def to_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def snapshot_tables(snapshot: Dict[str, Any]) -> Dict[str, Any]:
+    tables = snapshot.get("tables")
+    return tables if isinstance(tables, dict) else {}
+
+
+def snapshot_table_counts(snapshot: Dict[str, Any]) -> Dict[str, int]:
+    counts: Dict[str, int] = {}
+    for table, rows in snapshot_tables(snapshot).items():
+        if isinstance(rows, list):
+            counts[table] = len(rows)
+    return counts
+
+
+def row_identity(row: Dict[str, Any]) -> str:
+    row_id = to_int(row.get("id"), 0)
+    if row_id > 0:
+        return f"id:{row_id}"
+    return f"hash:{sha256_hex(stable_json(row))}"
+
+
+def row_equivalence_hash(row: Dict[str, Any]) -> str:
+    without_id = {key: value for key, value in row.items() if key != "id"}
+    return sha256_hex(stable_json(without_id))
+
+
+def should_replace_row(
+    table: str,
+    current: Dict[str, Any],
+    incoming: Dict[str, Any],
+) -> bool:
+    if table in UPDATED_AT_TABLES:
+        current_updated_at = to_int(current["row"].get("updatedAt"), -(2**63))
+        incoming_updated_at = to_int(incoming["row"].get("updatedAt"), -(2**63))
+        if incoming_updated_at != current_updated_at:
+            return incoming_updated_at > current_updated_at
+
+    current_rank = (to_int(current["revision"], 0), to_int(current["order"], 0))
+    incoming_rank = (to_int(incoming["revision"], 0), to_int(incoming["order"], 0))
+    return incoming_rank >= current_rank
+
+
+def merge_snapshot_values(
+    sources: list[tuple[int, Dict[str, Any]]],
+) -> tuple[Dict[str, Any], Dict[str, Any]]:
+    merged: Dict[str, Dict[str, Dict[str, Any]]] = {}
+    source_counts: list[Dict[str, Any]] = []
+    schema_version = 1
+
+    for order, (revision, snapshot) in enumerate(sources):
+        schema_version = max(schema_version, to_int(snapshot.get("schemaVersion"), 1))
+        counts = snapshot_table_counts(snapshot)
+        source_counts.append({"revision": revision, "table_counts": counts})
+
+        for table, rows in snapshot_tables(snapshot).items():
+            if not isinstance(rows, list):
+                continue
+            table_rows = merged.setdefault(table, {})
+
+            for raw_row in rows:
+                if not isinstance(raw_row, dict):
+                    continue
+                incoming = {
+                    "row": copy.deepcopy(raw_row),
+                    "revision": revision,
+                    "order": order,
+                }
+                key = row_identity(incoming["row"])
+                current = table_rows.get(key)
+                if current is None or should_replace_row(table, current, incoming):
+                    table_rows[key] = incoming
+
+    final_tables: Dict[str, list[Dict[str, Any]]] = {}
+    table_order = [table for table in SYNC_TABLES if table in merged]
+    table_order.extend(sorted(table for table in merged.keys() if table not in SYNC_TABLES))
+
+    for table in table_order:
+        equivalent_rows: Dict[str, Dict[str, Any]] = {}
+        for item in merged[table].values():
+            equivalent_key = row_equivalence_hash(item["row"])
+            current = equivalent_rows.get(equivalent_key)
+            if current is None or should_replace_row(table, current, item):
+                equivalent_rows[equivalent_key] = item
+
+        rows = [item["row"] for item in equivalent_rows.values()]
+        rows.sort(
+            key=lambda row: (
+                to_int(row.get("id"), 0),
+                to_int(row.get("updatedAt"), 0),
+                stable_json(row),
+            )
+        )
+        final_tables[table] = rows
+
+    merged_snapshot = {
+        "schemaVersion": schema_version,
+        "exportedAt": int(datetime.now(timezone.utc).timestamp() * 1000),
+        "tables": final_tables,
+    }
+    return merged_snapshot, {
+        "source_counts": source_counts,
+        "merged_table_counts": snapshot_table_counts(merged_snapshot),
+    }
+
+
 def prune_history(db: sqlite3.Connection) -> None:
     db.execute(
         """
@@ -201,6 +342,261 @@ def get_meta() -> Dict[str, Any]:
             "client_updated_at": row["client_updated_at"],
             "content_sha256": row["content_sha256"],
         }
+
+
+@app.get("/v1/sync/history", dependencies=[Depends(require_auth)])
+def get_history(limit: int = Query(default=HISTORY_LIMIT, ge=1, le=200)) -> Dict[str, Any]:
+    with connect_db() as db:
+        rows = db.execute(
+            """
+            SELECT *
+            FROM sync_snapshot_history
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (limit,),
+        ).fetchall()
+        return {"items": [history_meta(row) for row in rows]}
+
+
+@app.get("/v1/sync/history/{revision}", dependencies=[Depends(require_auth)])
+def get_history_snapshot(revision: int) -> Dict[str, Any]:
+    with connect_db() as db:
+        row = db.execute(
+            """
+            SELECT *
+            FROM sync_snapshot_history
+            WHERE revision = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (revision,),
+        ).fetchone()
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="history revision not found",
+            )
+        return snapshot_response(row)
+
+
+@app.post("/v1/sync/restore/{revision}", dependencies=[Depends(require_auth)])
+def restore_history_snapshot(
+    revision: int,
+    device_id: str = Query(default="server-restore", min_length=1, max_length=128),
+) -> Dict[str, Any]:
+    updated_at = utc_now()
+
+    with connect_db() as db:
+        history = db.execute(
+            """
+            SELECT *
+            FROM sync_snapshot_history
+            WHERE revision = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (revision,),
+        ).fetchone()
+        if history is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="history revision not found",
+            )
+
+        current = fetch_current(db)
+        current_revision = int(current["revision"]) if current is not None else 0
+
+        if current is not None:
+            db.execute(
+                """
+                INSERT INTO sync_snapshot_history (
+                    revision,
+                    snapshot_json,
+                    updated_at,
+                    updated_by,
+                    client_updated_at,
+                    content_sha256
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    current["revision"],
+                    current["snapshot_json"],
+                    current["updated_at"],
+                    current["updated_by"],
+                    current["client_updated_at"],
+                    current["content_sha256"],
+                ),
+            )
+
+        next_revision = current_revision + 1
+        restore_actor = f"restore:{device_id}"
+        db.execute(
+            """
+            INSERT INTO sync_snapshot (
+                id,
+                revision,
+                snapshot_json,
+                updated_at,
+                updated_by,
+                client_updated_at,
+                content_sha256
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                revision = excluded.revision,
+                snapshot_json = excluded.snapshot_json,
+                updated_at = excluded.updated_at,
+                updated_by = excluded.updated_by,
+                client_updated_at = excluded.client_updated_at,
+                content_sha256 = excluded.content_sha256
+            """,
+            (
+                SNAPSHOT_ID,
+                next_revision,
+                history["snapshot_json"],
+                updated_at,
+                restore_actor,
+                history["client_updated_at"],
+                history["content_sha256"],
+            ),
+        )
+        prune_history(db)
+
+    return {
+        "restored": True,
+        "restored_from_revision": revision,
+        "revision": next_revision,
+        "updated_at": updated_at,
+        "updated_by": restore_actor,
+        "content_sha256": history["content_sha256"],
+        "stored_bytes": len(history["snapshot_json"].encode("utf-8")),
+    }
+
+
+@app.post("/v1/sync/merge-history", dependencies=[Depends(require_auth)])
+def merge_history_snapshots(
+    limit: int = Query(default=HISTORY_LIMIT, ge=1, le=200),
+    device_id: str = Query(default="server-merge", min_length=1, max_length=128),
+    dry_run: bool = Query(default=False),
+) -> Dict[str, Any]:
+    updated_at = utc_now()
+
+    with connect_db() as db:
+        current = fetch_current(db)
+        if current is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="current snapshot not found",
+            )
+
+        history_rows = db.execute(
+            """
+            SELECT *
+            FROM (
+                SELECT *
+                FROM sync_snapshot_history
+                ORDER BY id DESC
+                LIMIT ?
+            )
+            ORDER BY id ASC
+            """,
+            (limit,),
+        ).fetchall()
+
+        sources = [
+            (to_int(row["revision"]), json.loads(row["snapshot_json"]))
+            for row in history_rows
+        ]
+        sources.append((to_int(current["revision"]), json.loads(current["snapshot_json"])))
+
+        merged_snapshot, summary = merge_snapshot_values(sources)
+        if not snapshot_tables(merged_snapshot):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="no mergeable snapshot tables found",
+            )
+
+        snapshot_json = stable_json(merged_snapshot)
+        content_hash = sha256_hex(snapshot_json)
+        source_revisions = [revision for revision, _snapshot in sources]
+        stored_bytes = len(snapshot_json.encode("utf-8"))
+
+        if dry_run:
+            return {
+                "merged": False,
+                "dry_run": True,
+                "source_revisions": source_revisions,
+                "merged_table_counts": summary["merged_table_counts"],
+                "source_counts": summary["source_counts"],
+                "content_sha256": content_hash,
+                "stored_bytes": stored_bytes,
+            }
+
+        db.execute(
+            """
+            INSERT INTO sync_snapshot_history (
+                revision,
+                snapshot_json,
+                updated_at,
+                updated_by,
+                client_updated_at,
+                content_sha256
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                current["revision"],
+                current["snapshot_json"],
+                current["updated_at"],
+                current["updated_by"],
+                current["client_updated_at"],
+                current["content_sha256"],
+            ),
+        )
+
+        next_revision = to_int(current["revision"]) + 1
+        merge_actor = f"merge:{device_id}"
+        db.execute(
+            """
+            INSERT INTO sync_snapshot (
+                id,
+                revision,
+                snapshot_json,
+                updated_at,
+                updated_by,
+                client_updated_at,
+                content_sha256
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                revision = excluded.revision,
+                snapshot_json = excluded.snapshot_json,
+                updated_at = excluded.updated_at,
+                updated_by = excluded.updated_by,
+                client_updated_at = excluded.client_updated_at,
+                content_sha256 = excluded.content_sha256
+            """,
+            (
+                SNAPSHOT_ID,
+                next_revision,
+                snapshot_json,
+                updated_at,
+                merge_actor,
+                str(merged_snapshot["exportedAt"]),
+                content_hash,
+            ),
+        )
+        prune_history(db)
+
+    return {
+        "merged": True,
+        "revision": next_revision,
+        "updated_at": updated_at,
+        "updated_by": merge_actor,
+        "source_revisions": source_revisions,
+        "merged_table_counts": summary["merged_table_counts"],
+        "source_counts": summary["source_counts"],
+        "content_sha256": content_hash,
+        "stored_bytes": stored_bytes,
+    }
 
 
 @app.put("/v1/sync/snapshot", dependencies=[Depends(require_auth)])

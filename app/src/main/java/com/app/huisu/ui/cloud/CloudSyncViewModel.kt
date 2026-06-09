@@ -75,6 +75,20 @@ class CloudSyncViewModel @Inject constructor(
         }
     }
 
+    fun previewMergeHistory() {
+        saveCurrentConfig()
+        runSyncAction {
+            cloudSyncRepository.previewMergeHistory().message
+        }
+    }
+
+    fun mergeHistory() {
+        saveCurrentConfig()
+        runSyncAction {
+            cloudSyncRepository.mergeHistory().message
+        }
+    }
+
     fun clearMessage() {
         _uiState.update { it.copy(message = null) }
     }

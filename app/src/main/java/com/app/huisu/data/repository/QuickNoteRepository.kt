@@ -1,7 +1,9 @@
 package com.app.huisu.data.repository
 
 import com.app.huisu.data.dao.QuickNoteDao
+import com.app.huisu.data.dao.QuickNoteImageDao
 import com.app.huisu.data.entity.QuickNote
+import com.app.huisu.data.entity.QuickNoteImage
 import com.app.huisu.data.entity.QuickNoteStatus
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -10,10 +12,17 @@ import javax.inject.Singleton
 @Singleton
 class QuickNoteRepository @Inject constructor(
     private val quickNoteDao: QuickNoteDao,
+    private val quickNoteImageDao: QuickNoteImageDao,
     private val cloudSyncRepository: CloudSyncRepository
 ) {
 
     fun getAllNotes(): Flow<List<QuickNote>> = quickNoteDao.getAllNotes()
+
+    fun getAllImages(): Flow<List<QuickNoteImage>> = quickNoteImageDao.getAllImages()
+
+    suspend fun refreshFromCloud() {
+        cloudSyncRepository.downloadSnapshot()
+    }
 
     suspend fun insert(note: QuickNote): Long {
         return quickNoteDao.insert(note).also {

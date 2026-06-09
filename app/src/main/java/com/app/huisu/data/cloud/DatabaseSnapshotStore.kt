@@ -200,13 +200,15 @@ class DatabaseSnapshotStore @Inject constructor(
             "achievements",
             "todo_categories",
             "todo_items",
-            "quick_notes"
+            "quick_notes",
+            "quick_note_images"
         )
 
         private val UPDATED_AT_TABLES = setOf(
             "todo_categories",
             "todo_items",
-            "quick_notes"
+            "quick_notes",
+            "quick_note_images"
         )
     }
 }

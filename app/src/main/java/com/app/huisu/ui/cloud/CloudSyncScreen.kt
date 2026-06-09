@@ -11,16 +11,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -49,6 +54,7 @@ fun CloudSyncScreen(
     viewModel: CloudSyncViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showMergeConfirm by rememberSaveable { mutableStateOf(false) }
 
     uiState.message?.let { message ->
         LaunchedEffect(message) {
@@ -165,6 +171,24 @@ fun CloudSyncScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    SecondaryButton(
+                        text = "预览合并历史",
+                        onClick = viewModel::previewMergeHistory,
+                        enabled = !uiState.isBusy,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SecondaryButton(
+                        text = "合并历史去重",
+                        onClick = { showMergeConfirm = true },
+                        enabled = !uiState.isBusy,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     InfoPill(
@@ -189,6 +213,31 @@ fun CloudSyncScreen(
                 )
             }
         }
+    }
+
+    if (showMergeConfirm) {
+        AlertDialog(
+            onDismissRequest = { showMergeConfirm = false },
+            title = { Text("合并历史版本") },
+            text = {
+                Text("会把当前云端快照和最近历史版本合并成一个新版本，并按 id 与 updatedAt 去重。执行前建议先点“预览合并历史”确认数量。")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showMergeConfirm = false
+                        viewModel.mergeHistory()
+                    }
+                ) {
+                    Text("确认合并", color = Purple667)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showMergeConfirm = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }
 
